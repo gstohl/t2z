@@ -1,0 +1,147 @@
+# Justfile for PCZT library development
+# Install just: cargo install just
+# Run: just <command>
+
+# Default recipe (runs when you type 'just')
+default:
+    @just --list
+
+# Build the library
+build:
+    cargo build
+
+# Build in release mode
+release:
+    cargo build --release
+
+# Run all tests
+test:
+    cargo test
+
+# Run tests with output
+test-verbose:
+    cargo test -- --nocapture
+
+# Run only fast tests (with mocking)
+test-fast:
+    cargo test --features mock-crypto
+
+# Run integration tests only
+test-integration:
+    cargo test --test integration_test
+
+# Run FFI tests only
+test-ffi:
+    cargo test --test ffi_test
+
+# Run unit tests only
+test-unit:
+    cargo test --lib
+
+# Run ignored tests
+test-ignored:
+    cargo test -- --ignored
+
+# Run all tests including ignored
+test-all:
+    cargo test -- --include-ignored
+
+# Auto-run tests on file changes (requires cargo-watch)
+watch:
+    cargo watch -x test
+
+# Auto-run fast tests on changes
+watch-fast:
+    cargo watch -x 'test --features mock-crypto'
+
+# Auto-run specific test on changes
+watch-test TEST:
+    cargo watch -x 'test {{TEST}}'
+
+# Check code without building
+check:
+    cargo check
+
+# Check FFI bindings
+check-ffi:
+    cargo check --features mock-crypto
+
+# Format code
+fmt:
+    cargo fmt
+
+# Check formatting
+fmt-check:
+    cargo fmt -- --check
+
+# Run clippy linter
+lint:
+    cargo clippy -- -D warnings
+
+# Fix clippy warnings automatically
+fix:
+    cargo clippy --fix
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Generate documentation
+doc:
+    cargo doc --no-deps --open
+
+# Generate C headers
+headers: build
+    @echo "Headers generated at include/t2z.h"
+
+# Build C example
+example-c: release
+    cd examples && make
+
+# Run C example
+run-example-c: example-c
+    cd examples && make run
+
+# Install development tools
+install-tools:
+    cargo install cargo-watch
+    cargo install cargo-nextest
+    cargo install just
+
+# Run tests with nextest (faster)
+nextest:
+    cargo nextest run
+
+# Run nextest with mocking
+nextest-fast:
+    cargo nextest run --features mock-crypto
+
+# Full check (format, lint, test)
+check-all: fmt-check lint test
+
+# Pre-commit hook simulation
+pre-commit: fmt lint test-fast
+
+# Count lines of code
+loc:
+    @echo "Rust source:"
+    @find src -name "*.rs" | xargs wc -l | tail -1
+    @echo "\nTests:"
+    @find tests -name "*.rs" | xargs wc -l | tail -1
+
+# Show test coverage (requires cargo-tarpaulin)
+coverage:
+    cargo tarpaulin --out Html
+    @echo "Open tarpaulin-report.html to view coverage"
+
+# Benchmark tests (requires benchmark implementations)
+bench:
+    cargo bench
+
+# Update dependencies
+update:
+    cargo update
+
+# Check for outdated dependencies
+outdated:
+    cargo outdated

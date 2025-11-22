@@ -1,0 +1,55 @@
+# cbindgen configuration for generating C headers
+
+language = "C"
+cpp_compat = true
+
+header = """
+/*
+ * t2z - Transparent to Zcash Library
+ *
+ * This header provides FFI bindings for the t2z library, enabling transparent
+ * Zcash users to send shielded outputs using PCZT (Partially Constructed Zcash Transaction).
+ *
+ * Generated automatically by cbindgen.
+ */
+"""
+
+include_version = true
+namespace = "t2z"
+namespaces = []
+
+[export]
+include = [
+    "ResultCode",
+    "PcztHandle",
+    "TransactionRequestHandle",
+    "CPayment",
+    "CTransparentInput",
+    "CTransparentOutput",
+]
+
+[export.rename]
+
+[fn]
+prefix = ""
+postfix = ""
+args = "Vertical"
+rename_args = "GeckoCase"
+
+[struct]
+derive_eq = true
+derive_neq = true
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+
+[const]
+allow_static_const = true
+
+[macro_expansion]
+bitflags = true
+
+[parse]
+parse_deps = false
+include = []
+exclude = []
