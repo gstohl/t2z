@@ -1,11 +1,11 @@
-# PCZT Library - Multi-Language Implementation
+# t2z - Transparent to Shielded
 
-A comprehensive library for enabling transparent Zcash users to send shielded (Orchard) outputs using the PCZT (Partially Constructed Zcash Transaction) API as defined in ZIP 374.
+Multi-language library for sending transparent Zcash to shielded (Orchard) outputs using PCZT (ZIP 374).
 
 ## Project Structure
 
 ```
-pczt-lib/
+t2z/
 ├── rust/              # Core Rust library with C FFI bindings
 │   ├── src/
 │   │   ├── lib.rs     # Core Rust implementation
@@ -13,84 +13,59 @@ pczt-lib/
 │   │   ├── types.rs   # Type definitions
 │   │   └── error.rs   # Error types
 │   ├── include/       # Generated C headers
-│   │   └── pczt_lib.h
+│   │   └── t2z.h
 │   └── examples/      # C usage examples
 ├── typescript/        # TypeScript/Node.js bindings (TODO)
 ├── kotlin/           # Kotlin/JVM bindings (TODO)
 ├── java/             # Java bindings (TODO)
 ├── go/               # Go bindings (TODO)
-└── REQ.md            # Original requirements specification
+└── REQUIREMENTS.md   # Requirements specification
 ```
 
 ## Features
 
-- **Core Rust Library**: High-performance implementation with memory safety guarantees
-- **C FFI Interface**: Stable ABI for cross-language compatibility
-- **Auto-generated Headers**: C/C++ headers generated via cbindgen
-- **Multiple Language Support**: Bindings for TypeScript, Go, Kotlin, and Java
+- **Rust Core**: High-performance with memory safety
+- **C FFI**: Stable ABI for language bindings
+- **Auto-generated Headers**: C/C++ via cbindgen
+- **Multi-language**: TypeScript, Go, Kotlin, Java
 
-## API Overview
+## API
 
-The library implements the complete PCZT workflow:
-
-1. **propose_transaction** - Creates PCZT from transparent inputs and payment request
-2. **prove_transaction** - Adds Orchard proofs (must use Rust prover)
+1. **propose_transaction** - Create PCZT from transparent inputs and payment request
+2. **prove_transaction** - Add Orchard proofs
 3. **verify_before_signing** - Optional pre-signing verification
-4. **get_sighash** - Obtains signature hash for inputs
-5. **append_signature** - Adds signatures to PCZT
-6. **combine** - Combines multiple PCZTs
-7. **finalize_and_extract** - Finalizes and extracts transaction bytes
-8. **parse_pczt** / **serialize_pczt** - Serialization for transmission
+4. **get_sighash** - Get signature hash for inputs
+5. **append_signature** - Add signatures to PCZT
+6. **combine** - Combine multiple PCZTs
+7. **finalize_and_extract** - Finalize and extract transaction bytes
+8. **parse_pczt** / **serialize_pczt** - Serialize/deserialize PCZT
 
-## Getting Started
-
-### Building the Rust Library
+## Build
 
 ```bash
 cd rust
 cargo build --release
 ```
 
-The built libraries will be in `rust/target/release/`:
-- `libpczt_lib.dylib` (macOS)
-- `libpczt_lib.so` (Linux)
-- `pczt_lib.dll` (Windows)
-- `libpczt_lib.a` (static library)
+Output: `rust/target/release/`
+- `libt2z.dylib` (macOS)
+- `libt2z.so` (Linux)
+- `t2z.dll` (Windows)
+- `libt2z.a` (static)
 
-### C Header File
-
-The C header is automatically generated during build at `rust/include/pczt_lib.h`.
+Header: `rust/include/t2z.h`
 
 ## Language Bindings
 
-### TypeScript (Node.js)
+- **TypeScript**: node-ffi or napi-rs (TODO)
+- **Go**: cgo (TODO)
+- **Kotlin**: JNI/JNA (TODO)
+- **Java**: JNI (TODO)
 
-Coming soon. Will use node-ffi or napi-rs to interface with the C library.
-
-**Location**: `typescript/`
-
-### Go
-
-Coming soon. Will use cgo to interface with the C library.
-
-**Location**: `go/`
-
-### Kotlin
-
-Coming soon. Will use JNI or JNA to interface with the C library.
-
-**Location**: `kotlin/`
-
-### Java
-
-Coming soon. Will use JNI to interface with the C library.
-
-**Location**: `java/`
-
-## Usage Example (C)
+## Usage
 
 ```c
-#include "pczt_lib.h"
+#include "t2z.h"
 
 // Create payments
 CPayment payments[] = {
@@ -105,88 +80,72 @@ CPayment payments[] = {
 
 // Create transaction request
 TransactionRequestHandle* request = NULL;
-ResultCode result = pczt_transaction_request_new(payments, 1, &request);
+ResultCode result = t2z_transaction_request_new(payments, 1, &request);
 
 // Propose transaction
 PcztHandle* pczt = NULL;
-result = pczt_propose_transaction(inputs, num_inputs, request, &pczt);
+result = t2z_propose_transaction(inputs, num_inputs, request, &pczt);
 
 // Add proofs
 PcztHandle* proved_pczt = NULL;
-result = pczt_prove_transaction(pczt, &proved_pczt);
+result = t2z_prove_transaction(pczt, &proved_pczt);
 
 // Get sighash and sign
 uint8_t sighash[32];
-result = pczt_get_sighash(proved_pczt, 0, &sighash);
+result = t2z_get_sighash(proved_pczt, 0, &sighash);
 
 // ... sign the sighash ...
 
 // Append signature
 PcztHandle* signed_pczt = NULL;
-result = pczt_append_signature(proved_pczt, 0, signature, &signed_pczt);
+result = t2z_append_signature(proved_pczt, 0, signature, &signed_pczt);
 
 // Finalize and extract
 uint8_t* tx_bytes = NULL;
 size_t tx_bytes_len = 0;
-result = pczt_finalize_and_extract(signed_pczt, &tx_bytes, &tx_bytes_len);
+result = t2z_finalize_and_extract(signed_pczt, &tx_bytes, &tx_bytes_len);
 
 // Cleanup
-pczt_free_bytes(tx_bytes, tx_bytes_len);
-pczt_transaction_request_free(request);
+t2z_free_bytes(tx_bytes, tx_bytes_len);
+t2z_transaction_request_free(request);
 ```
 
-## Development Status
+## Status
 
-### Completed ✅
+### Completed
 
-- [x] Rust project structure
-- [x] Core library API skeleton
+- [x] Project structure
+- [x] API skeleton
 - [x] C FFI bindings
-- [x] C header generation
-- [x] Error handling framework
-- [x] Type definitions
-- [x] Build system setup
+- [x] Header generation
+- [x] Error handling
+- [x] Build system
 
-### In Progress 🚧
+### In Progress
 
-- [ ] Creator role implementation
-- [ ] Constructor role implementation
-- [ ] IO Finalizer implementation
-- [ ] Prover role integration
-- [ ] ZIP 244 signature hashing
+- [ ] Creator role
+- [ ] Constructor role
+- [ ] IO Finalizer
+- [ ] Prover integration
+- [ ] ZIP 244 sighash
 - [ ] Signature verification
-- [ ] PCZT combination logic
+- [ ] PCZT combination
 - [ ] Transaction finalization
 
-### Planned 📋
+### Planned
 
-- [ ] TypeScript/Node.js bindings
-- [ ] Go bindings
-- [ ] Kotlin bindings
-- [ ] Java bindings
-- [ ] Comprehensive test suite
+- [ ] Language bindings
+- [ ] Test suite
 - [ ] Documentation
-- [ ] Examples for each language
+- [ ] Examples
 
 ## Dependencies
 
-### Rust
-
-- `pczt` - PCZT implementation from librustzcash
-- `zcash_primitives` - Core Zcash primitives
+- `pczt` - PCZT implementation
+- `zcash_primitives` - Core primitives
 - `zcash_proofs` - Proof generation
-- `orchard` - Orchard protocol implementation
-- `zip321` - Payment request parsing
-
-## Contributing
-
-Contributions are welcome! Areas that need work:
-
-1. Complete the TODO sections in the Rust implementation
-2. Implement language-specific bindings
-3. Add comprehensive tests
-4. Improve documentation
-5. Add usage examples
+- `orchard` - Orchard protocol
+- `zip321` - Payment requests
 
 ## License
 
