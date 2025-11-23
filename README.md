@@ -110,42 +110,24 @@ t2z_free_bytes(tx_bytes, tx_bytes_len);
 t2z_transaction_request_free(request);
 ```
 
-## Status
-
-### Completed
-
-- [x] Project structure
-- [x] API skeleton
-- [x] C FFI bindings
-- [x] Header generation
-- [x] Error handling
-- [x] Build system
-
-### In Progress
-
-- [ ] Creator role
-- [ ] Constructor role
-- [ ] IO Finalizer
-- [ ] Prover integration
-- [ ] ZIP 244 sighash
-- [ ] Signature verification
-- [ ] PCZT combination
-- [ ] Transaction finalization
-
-### Planned
-
-- [ ] Language bindings
-- [ ] Test suite
-- [ ] Documentation
-- [ ] Examples
-
 ## Dependencies
 
-- `pczt` - PCZT implementation
-- `zcash_primitives` - Core primitives
-- `zcash_proofs` - Proof generation
-- `orchard` - Orchard protocol
-- `zip321` - Payment requests
+This project uses a fork of librustzcash with necessary fixes for external signature support:
+
+- **Fork**: [gstohl/librustzcash](https://github.com/gstohl/librustzcash)
+- **Branch**: `pczt-append-transparent-sigs`
+- **Why Fork?**
+  - Upstream commit [370bf25](https://github.com/zcash/librustzcash/commit/370bf256abe3f0037e6bc04cb8a4db176bde0f0a) has bugs (calls `append_signature()` but methods are named `apply_signature()`)
+  - Added `get_transparent_sighash()` convenience method for external signers
+  - Required for PCZT transparent signature handling
+
+### Core Dependencies
+
+- `pczt` - PCZT implementation (ZIP 374)
+- `zcash_primitives` - Core Zcash primitives
+- `orchard` - Orchard protocol implementation
+- `zcash_transparent` - Transparent address handling
+- `secp256k1` - ECDSA signature support
 
 ## License
 

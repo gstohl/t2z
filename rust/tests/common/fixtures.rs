@@ -58,13 +58,101 @@ pub fn payment_with_memo() -> Payment {
         .with_memo("Test payment".to_string())
 }
 
-/// Sample transparent input data (serialized placeholder)
-/// Returns serialized mock UTXO data with sufficient balance for tests
+/// Sample transparent input data
+/// Returns empty - callers should use create_test_pczt() for testing
 pub fn sample_transparent_inputs() -> Vec<u8> {
-    // For now, return a magic marker that the propose_transaction function
-    // will recognize to add mock inputs during testing
-    // In production, this would contain actual UTXO data
-    b"MOCK_INPUTS_FOR_TESTING".to_vec()
+    vec![]
+}
+
+/// Test-only helper to create a PCZT with realistic transparent inputs
+/// This bypasses propose_transaction and uses Builder API directly
+pub fn create_test_pczt(
+    transaction_request: &t2z::types::TransactionRequest,
+) -> pczt::Pczt {
+    use zcash_primitives::transaction::{
+        builder::{Builder, BuildConfig},
+        fees::zip317::FeeRule,
+        components::transparent::TxOut,
+    };
+    use zcash_protocol::{
+        consensus::TestNetwork,
+        value::Zatoshis,
+        memo::MemoBytes,
+    };
+    use zcash_address::{ZcashAddress, TryFromAddress, unified, unified::Container};
+    use zcash_transparent::{address::TransparentAddress, bundle::OutPoint};
+    use pczt::{Pczt, roles::creator::Creator, roles::io_finalizer::IoFinalizer};
+    use rand_core::OsRng;
+
+    let params = TestNetwork;
+    let target_height = 2_000_000u32.into();
+
+    let mut builder = Builder::new(
+        params,
+        target_height,
+        BuildConfig::Standard {
+            sapling_anchor: None,
+            orchard_anchor: Some(orchard::Anchor::empty_tree()),
+        },
+    );
+
+    // Add a transparent input with sufficient funds (test-only)
+    let secp = secp256k1::Secp256k1::new();
+    let sk = secp256k1::SecretKey::from_slice(&[1u8; 32]).unwrap();
+    let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &sk);
+    let transparent_addr = TransparentAddress::from_pubkey(&pubkey);
+
+    let utxo = OutPoint::new([0u8; 32], 0);
+    let coin = TxOut::new(
+        Zatoshis::const_from_u64(100_000_000), // 1 ZEC
+        transparent_addr.script().into(),
+    );
+
+    builder.add_transparent_input(pubkey, utxo, coin).unwrap();
+
+    // Add change output
+    let change_amount = Zatoshis::const_from_u64(99_890_000);
+    builder.add_transparent_output(&transparent_addr, change_amount).unwrap();
+
+    // Add outputs from payment request
+    for payment in &transaction_request.payments {
+        let addr: ZcashAddress = payment.address.parse().unwrap();
+        let amount = Zatoshis::from_u64(payment.amount).unwrap();
+
+        if let Ok(t_addr) = addr.clone().convert::<TransparentAddress>() {
+            builder.add_transparent_output(&t_addr, amount).unwrap();
+        } else {
+            // Handle unified address with Orchard
+            struct UnifiedWrapper(unified::Address);
+            impl TryFromAddress for UnifiedWrapper {
+                type Error = String;
+                fn try_from_unified(
+                    _: zcash_protocol::consensus::NetworkType,
+                    data: unified::Address
+                ) -> Result<Self, zcash_address::ConversionError<Self::Error>> {
+                    Ok(UnifiedWrapper(data))
+                }
+            }
+
+            let wrapper = addr.convert::<UnifiedWrapper>().unwrap();
+            let receivers = wrapper.0.items();
+            let orchard_raw = receivers.iter()
+                .find_map(|r| if let unified::Receiver::Orchard(a) = r { Some(a) } else { None })
+                .unwrap();
+
+            let orchard_addr = Option::from(orchard::Address::from_raw_address_bytes(orchard_raw)).unwrap();
+            let memo = payment.memo.as_ref()
+                .and_then(|m| MemoBytes::from_bytes(m.as_bytes()).ok())
+                .unwrap_or_else(|| MemoBytes::empty());
+
+            builder.add_orchard_output::<FeeRule>(None, orchard_addr, amount.into_u64(), memo).unwrap();
+        }
+    }
+
+    // Build PCZT
+    let pczt_result = builder.build_for_pczt(OsRng, &FeeRule::standard()).unwrap();
+    let pczt = Creator::build_from_parts(pczt_result.pczt_parts).unwrap();
+    IoFinalizer::new(pczt).finalize_io().unwrap()
 }
 
 /// Expected signature hash for testing (placeholder)

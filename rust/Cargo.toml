@@ -8,16 +8,16 @@ name = "t2z"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-# Core PCZT library
-pczt = { git = "https://github.com/zcash/librustzcash.git", features = ["transparent", "orchard", "sapling", "signer", "io-finalizer", "zcp-builder", "prover", "spend-finalizer", "tx-extractor"] }
+# Core PCZT library - using gstohl fork with fixed apply_signature methods
+pczt = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent", "orchard", "signer", "io-finalizer", "zcp-builder", "prover", "spend-finalizer", "tx-extractor"] }
 
 # Transaction building - REQUIRED for core functionality
-zcash_primitives = { git = "https://github.com/zcash/librustzcash.git", features = ["transparent-inputs"] }       # Transaction builder
-zcash_address = { git = "https://github.com/zcash/librustzcash.git" }          # Address parsing
-zcash_protocol = { git = "https://github.com/zcash/librustzcash.git" }         # Value types, consensus
-zcash_transparent = { git = "https://github.com/zcash/librustzcash.git", features = ["transparent-inputs"] }      # Transparent addresses
+zcash_primitives = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }       # Transaction builder
+zcash_address = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs" }          # Address parsing
+zcash_protocol = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs" }         # Value types, consensus
+zcash_transparent = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }      # Transparent addresses
 rand_core = "0.6"                                                                # RNG for builder
-orchard = "0.11"                                                                 # Orchard address handling
+orchard = "0.11"                                                                 # Orchard address handling (patched below)
 subtle = "2.5"                                                                   # Constant-time Option type
 secp256k1 = "0.29"                                                               # ECDSA for transparent addresses
 
@@ -36,11 +36,18 @@ proptest = "1.4"        # Property-based testing
 criterion = "0.5"       # Benchmarking
 
 # Additional test-only dependencies
-zcash_proofs = { git = "https://github.com/zcash/librustzcash.git" }  # For proof tests
-zip321 = { git = "https://github.com/zcash/librustzcash.git" }         # ZIP321 parsing tests
+zcash_proofs = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs" }  # For proof tests
+zip321 = { git = "https://github.com/gstohl/librustzcash.git", branch = "pczt-append-transparent-sigs" }         # ZIP321 parsing tests
 
 [build-dependencies]
 cbindgen = "0.26"
+
+[patch.crates-io]
+# Match exact versions used by librustzcash pczt-append-transparent-sigs branch
+halo2_gadgets = { git = "https://github.com/zcash/halo2", rev = "2308caf68c48c02468b66cfc452dad54e355e32f" }
+halo2_proofs = { git = "https://github.com/zcash/halo2", rev = "2308caf68c48c02468b66cfc452dad54e355e32f" }
+orchard = { git = "https://github.com/zcash/orchard.git", rev = "22d46302faf7fcfb53922160588e5a4c5bee07af" }
+sapling = { package = "sapling-crypto", git = "https://github.com/zcash/sapling-crypto.git", rev = "1d756ee69a2597db26b0858f446e6ed210c7426d" }
 
 [features]
 default = []

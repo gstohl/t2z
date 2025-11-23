@@ -18,7 +18,6 @@ use zcash_protocol::{
 use zcash_address::{ZcashAddress, unified};
 use zcash_transparent::address::TransparentAddress;
 use rand_core::OsRng;
-use zcash_primitives::transaction::components::transparent::TxOut;
 
 /// Proposes a transaction by creating a PCZT from transparent inputs and a transaction request.
 ///
@@ -53,44 +52,20 @@ pub fn propose_transaction(
         },
     );
 
-    // Add transparent inputs
-    // TODO: In production, parse actual UTXO data from inputs_to_spend
-    // For now, handle mock inputs for testing
-    if inputs_to_spend == b"MOCK_INPUTS_FOR_TESTING" {
-        // Create a mock transparent input for testing with 1 ZEC
-        use zcash_transparent::bundle::OutPoint;
-
-        let secp = secp256k1::Secp256k1::new();
-
-        // Create a mock secret key and derive pubkey
-        let sk = secp256k1::SecretKey::from_slice(&[1u8; 32])
-            .map_err(|e| ProposalError::InvalidRequest(format!("Failed to create mock secret key: {:?}", e)))?;
-        let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &sk);
-
-        // Create a transparent address
-        let transparent_addr = TransparentAddress::from_pubkey(&pubkey);
-
-        // Create a mock UTXO (txid + output index) with 1 ZEC
-        // We'll add a change output for any leftover funds
-        let mock_utxo = OutPoint::new([0u8; 32], 0);
-        let mock_coin = TxOut::new(
-            Zatoshis::const_from_u64(100_000_000), // 1 ZEC
-            transparent_addr.script().into(),
-        );
-
-        builder.add_transparent_input(pubkey, mock_utxo, mock_coin)
-            .map_err(|e| ProposalError::PcztCreation(format!("Failed to add mock transparent input: {:?}", e)))?;
-
-        // Add a transparent change output to receive any leftover funds
-        // The builder will calculate the proper change amount after fees
-        // We'll use the same address for change (in production this would be a new address)
-        let change_amount = Zatoshis::const_from_u64(99_890_000); // Approximate change after 100k payment + 10k fee
-        builder.add_transparent_output(&transparent_addr, change_amount)
-            .map_err(|e| ProposalError::PcztCreation(format!("Failed to add change output: {:?}", e)))?;
-    } else if !inputs_to_spend.is_empty() {
-        // TODO: Implement proper UTXO parsing and input addition
-        return Err(ProposalError::InvalidRequest("UTXO parsing not yet implemented".to_string()));
+    // Add transparent inputs from the provided data
+    // The inputs_to_spend should contain serialized transparent input data:
+    // For each input: pubkey (33 bytes) + txid (32 bytes) + vout (4 bytes) + amount (8 bytes) + script (variable)
+    if !inputs_to_spend.is_empty() {
+        // TODO: Implement proper UTXO parsing format
+        // For now, we expect a simplified format for testing
+        return Err(ProposalError::InvalidRequest(
+            "Custom UTXO input format not yet implemented. Use transparent inputs from existing transactions.".to_string()
+        ));
     }
+
+    // Note: For testing purposes, transactions can be created without inputs by using
+    // the Builder's ability to create unfunded transactions. In production, callers
+    // must provide properly formatted transparent inputs.
 
     // Add outputs from payment request
     for payment in &transaction_request.payments {
@@ -220,23 +195,76 @@ pub fn prove_transaction(pczt: Pczt) -> Result<Pczt, ProverError> {
 /// If the entity that invoked propose_transaction is the same as the entity adding signatures,
 /// and no third party may have malleated the PCZT, this step may be skipped.
 ///
+/// This performs basic sanity checks to ensure the PCZT matches expectations.
+///
 /// # Arguments
 /// * `pczt` - The PCZT to verify
 /// * `transaction_request` - The original transaction request
-/// * `expected_change` - Expected change outputs
+/// * `expected_change` - Expected change outputs (serialized format - not yet implemented)
 ///
 /// # Returns
 /// * `Result<(), VerificationFailure>` - Success or verification error
 pub fn verify_before_signing(
-    _pczt: &Pczt,
-    _transaction_request: &TransactionRequest,
+    pczt: &Pczt,
+    transaction_request: &TransactionRequest,
     _expected_change: &[u8],
 ) -> Result<(), VerificationFailure> {
-    // TODO: Verify that the PCZT matches the transaction request
-    // TODO: Verify expected change outputs
-    // TODO: Verify fee calculations
+    // Verify that we have outputs
+    let outputs = pczt.transparent().outputs();
+    if outputs.is_empty() && !pczt.orchard().actions().is_empty() {
+        // Shielded-only transaction - no transparent outputs to verify
+        // We would need to verify Orchard outputs match the request
+        // TODO: Implement Orchard output verification
+        return Ok(());
+    }
 
-    Err(VerificationFailure::NotImplemented)
+    // Basic verification: Check that the number of outputs makes sense
+    // We expect at least as many outputs as payments (could be more if there's change)
+    let num_payments = transaction_request.payments.len();
+    let total_outputs = outputs.len() + pczt.orchard().actions().len();
+
+    if total_outputs < num_payments {
+        return Err(VerificationFailure::OutputMismatch(
+            format!("Expected at least {} outputs but found {}", num_payments, total_outputs)
+        ));
+    }
+
+    // Verify payment amounts are represented in outputs
+    // This is a simplified check - a full implementation would:
+    // 1. Parse addresses from outputs
+    // 2. Match them to the payment request
+    // 3. Verify exact amounts and destinations
+    // 4. Verify change outputs separately
+    // 5. Verify fee is reasonable
+
+    // For now, we just verify the total output value is reasonable
+    let total_transparent_output: u64 = outputs.iter()
+        .map(|output| *output.value())
+        .sum();
+
+    // For Orchard outputs, we can't easily verify values without accessing private fields
+    // The pczt crate doesn't expose output values publicly
+
+    // Verify requested payment total matches (approximately) - allowing for fees
+    let requested_total = transaction_request.total_amount();
+
+    // The transparent outputs should be at least the requested amount (minus what might be in Orchard)
+    // This is a loose check - proper verification would sum all output pools
+    if total_transparent_output > 0 && total_transparent_output < requested_total.saturating_sub(1_000_000) {
+        return Err(VerificationFailure::OutputMismatch(
+            format!(
+                "Transparent output total {} is less than requested amount {} (allowing for fees)",
+                total_transparent_output, requested_total
+            )
+        ));
+    }
+
+    // TODO: Verify expected change outputs match
+    // TODO: Verify fee is reasonable (not too high)
+    // TODO: Verify Orchard output recipients and amounts
+    // TODO: Verify memo fields match payment requests
+
+    Ok(())
 }
 
 /// Gets the signature hash for a specific input.
@@ -254,42 +282,72 @@ pub fn get_sighash(
     pczt: &Pczt,
     input_index: usize,
 ) -> Result<SigHash, SighashError> {
+    use pczt::roles::signer::Signer;
+
     // Validate input index
     if input_index >= pczt.transparent().inputs().len() {
         return Err(SighashError::InvalidInputIndex(input_index));
     }
 
-    // TODO: Implement ZIP 244 signature hashing
-    // This may use zcash_primitives signature hashing implementation
+    // Create a Signer to access sighash computation
+    let signer = Signer::new(pczt.clone())
+        .map_err(|e| SighashError::CalculationFailed(format!("Failed to create Signer: {:?}", e)))?;
 
-    Err(SighashError::NotImplemented)
+    // Get the sighash for this transparent input using the convenience method
+    let hash = signer.get_transparent_sighash(input_index)
+        .map_err(|e| match e {
+            pczt::roles::signer::Error::InvalidIndex => SighashError::InvalidInputIndex(input_index),
+            _ => SighashError::CalculationFailed(format!("{:?}", e)),
+        })?;
+
+    Ok(SigHash(hash))
 }
 
 /// Appends a signature to the PCZT for a specific input.
 ///
 /// The implementation should verify that the signature validates for the input being spent.
 ///
+/// NOTE: This function is for adding pre-computed signatures (e.g., from hardware wallets).
+/// For direct signing, use the pczt::roles::signer::Signer role's sign_transparent() method.
+///
 /// # Arguments
 /// * `pczt` - The PCZT to add the signature to
 /// * `input_index` - The index of the input this signature applies to
-/// * `signature` - The signature bytes
+/// * `signature` - The 64-byte compact ECDSA signature (r and s components, no recovery byte)
 ///
 /// # Returns
 /// * `Result<Pczt, SignatureError>` - The updated PCZT or an error
 pub fn append_signature(
     pczt: Pczt,
     input_index: usize,
-    _signature: [u8; 64],
+    signature: [u8; 64],
 ) -> Result<Pczt, SignatureError> {
+    use pczt::roles::signer::Signer;
+
     // Validate input index
     if input_index >= pczt.transparent().inputs().len() {
         return Err(SignatureError::InvalidInputIndex(input_index));
     }
 
-    // TODO: Verify the signature
-    // TODO: Add signature to the PCZT
+    // Create a Signer (which validates and parses the PCZT)
+    let mut signer = Signer::new(pczt)
+        .map_err(|e| SignatureError::InvalidFormat)?;
 
-    Err(SignatureError::NotImplemented)
+    // Parse the signature bytes into secp256k1::ecdsa::Signature
+    let sig = secp256k1::ecdsa::Signature::from_compact(&signature)
+        .map_err(|_| SignatureError::InvalidFormat)?;
+
+    // Append the signature using the Signer's method
+    // This validates that the signature is correct for the input
+    signer.append_transparent_signature(input_index, sig)
+        .map_err(|e| match e {
+            pczt::roles::signer::Error::InvalidIndex => SignatureError::InvalidInputIndex(input_index),
+            pczt::roles::signer::Error::TransparentSign(_) => SignatureError::VerificationFailed,
+            _ => SignatureError::InvalidFormat,
+        })?;
+
+    // Return the updated PCZT
+    Ok(signer.finish())
 }
 
 /// Combines multiple PCZTs into one.
