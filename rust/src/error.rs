@@ -193,4 +193,7 @@ pub enum FfiError {
 
     #[error("Parse error: {0}")]
     Parse(#[from] ParseError),
+
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
 }

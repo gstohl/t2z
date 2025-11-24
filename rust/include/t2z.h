@@ -112,13 +112,26 @@ void pczt_transaction_request_free(struct TransactionRequestHandle *aRequest)
 ;
 
 /**
- * Proposes a new transaction
+ * Proposes a new transaction (DEPRECATED - use pczt_propose_transaction_v2)
  */
 
 enum ResultCode pczt_propose_transaction(const struct CTransparentInput *aInputs,
                                          uintptr_t aNumInputs,
                                          const struct TransactionRequestHandle *aRequest,
                                          struct PcztHandle **aPcztOut)
+;
+
+/**
+ * Proposes a new transaction using serialized input bytes
+ *
+ * This is the recommended FFI function that accepts inputs in the binary serialization format.
+ */
+
+enum ResultCode pczt_propose_transaction_v2(const uint8_t *aInputsBytes,
+                                            uintptr_t aInputsBytesLen,
+                                            const struct TransactionRequestHandle *aRequest,
+                                            const char *aChangeAddress,
+                                            struct PcztHandle **aPcztOut)
 ;
 
 /**

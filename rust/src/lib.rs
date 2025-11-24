@@ -17,6 +17,7 @@ use zcash_protocol::{
 };
 use zcash_address::{ZcashAddress, unified};
 use zcash_transparent::address::TransparentAddress;
+use zcash_transparent::sighash::SighashType;
 use rand_core::OsRng;
 
 /// Proposes a transaction by creating a PCZT from transparent inputs and a transaction request.
@@ -24,14 +25,29 @@ use rand_core::OsRng;
 /// This implements the Creator, Constructor, and IO Finalizer roles.
 ///
 /// # Arguments
-/// * `inputs_to_spend` - Serialized transparent input data
+/// * `inputs_to_spend` - Serialized transparent input data in the following binary format:
+///   ```text
+///   [num_inputs: 2 bytes (u16 LE)]
+///   For each input:
+///     [pubkey: 33 bytes]        - Compressed secp256k1 public key
+///     [txid: 32 bytes]          - Transaction ID of the UTXO being spent
+///     [vout: 4 bytes (u32 LE)]  - Output index in the previous transaction
+///     [amount: 8 bytes (u64 LE)]- Amount in zatoshis
+///     [script_len: 2 bytes (u16 LE)] - Length of script_pubkey
+///     [script: script_len bytes]     - The script_pubkey of the UTXO
+///   ```
+///   See `types::parse_transparent_inputs()` for the parser and
+///   `types::serialize_transparent_inputs()` for the serializer.
+///
 /// * `transaction_request` - The transaction request containing recipient information
+/// * `change_address` - Optional transparent address for change output. If None, derives from first input's pubkey
 ///
 /// # Returns
 /// * `Result<Pczt, ProposalError>` - The created PCZT or an error
 pub fn propose_transaction(
     inputs_to_spend: &[u8],
     transaction_request: TransactionRequest,
+    change_address: Option<String>,
 ) -> Result<Pczt, ProposalError> {
     // Validate inputs
     if transaction_request.payments.is_empty() {
@@ -52,20 +68,18 @@ pub fn propose_transaction(
         },
     );
 
-    // Add transparent inputs from the provided data
-    // The inputs_to_spend should contain serialized transparent input data:
-    // For each input: pubkey (33 bytes) + txid (32 bytes) + vout (4 bytes) + amount (8 bytes) + script (variable)
-    if !inputs_to_spend.is_empty() {
-        // TODO: Implement proper UTXO parsing format
-        // For now, we expect a simplified format for testing
-        return Err(ProposalError::InvalidRequest(
-            "Custom UTXO input format not yet implemented. Use transparent inputs from existing transactions.".to_string()
-        ));
-    }
+    // Parse and add transparent inputs from the provided data
+    let inputs = types::parse_transparent_inputs(inputs_to_spend)
+        .map_err(|e| ProposalError::InvalidRequest(format!("Failed to parse inputs: {}", e)))?;
 
-    // Note: For testing purposes, transactions can be created without inputs by using
-    // the Builder's ability to create unfunded transactions. In production, callers
-    // must provide properly formatted transparent inputs.
+    for input in &inputs {
+        let outpoint = input.outpoint();
+        let coin = input.txout()
+            .map_err(|e| ProposalError::InvalidRequest(format!("Invalid input data: {}", e)))?;
+
+        builder.add_transparent_input(input.pubkey, outpoint, coin)
+            .map_err(|e| ProposalError::PcztCreation(format!("Failed to add transparent input: {:?}", e)))?;
+    }
 
     // Add outputs from payment request
     for payment in &transaction_request.payments {
@@ -136,13 +150,71 @@ pub fn propose_transaction(
         }
     }
 
+    // Calculate change if needed
+    // Total input value
+    let total_input: u64 = inputs.iter().map(|i| i.amount).sum();
+
+    // Total requested output value
+    let total_output: u64 = transaction_request.total_amount();
+
+    // Estimate fee based on ZIP 317 standard
+    // The Builder calculates actual fees dynamically, so our estimate must match
+    // Transparent-only: ~10,000 zatoshis
+    // Transparent->shielded (Orchard): ~15,000 zatoshis (higher due to shielded actions)
+    let has_shielded = transaction_request.has_shielded_outputs();
+    let estimated_fee: u64 = if has_shielded { 15_000 } else { 10_000 };
+
+    // If we have change (inputs > outputs + fee), add a change output
+    if total_input > total_output + estimated_fee {
+        let change_amount = total_input - total_output - estimated_fee;
+
+        // Get or derive change address
+        let change_addr = if let Some(addr_str) = change_address {
+            // Parse provided change address
+            addr_str.parse::<ZcashAddress>()
+                .map_err(|_| ProposalError::InvalidAddress(addr_str))?
+                .convert::<TransparentAddress>()
+                .map_err(|_| ProposalError::InvalidRequest("Change address must be transparent".to_string()))?
+        } else {
+            // Derive from first input's pubkey
+            if inputs.is_empty() {
+                return Err(ProposalError::InvalidRequest("No inputs provided for change derivation".to_string()));
+            }
+            TransparentAddress::from_pubkey(&inputs[0].pubkey)
+        };
+
+        // Add change output
+        let change_zatoshis = Zatoshis::from_u64(change_amount)
+            .map_err(|_| ProposalError::InvalidRequest(format!("Invalid change amount: {}", change_amount)))?;
+
+        builder.add_transparent_output(&change_addr, change_zatoshis)
+            .map_err(|e| ProposalError::PcztCreation(format!("Failed to add change output: {:?}", e)))?;
+    }
+
     // Build PCZT from the builder
     let pczt_result = builder.build_for_pczt(OsRng, &FeeRule::standard())
         .map_err(|e| ProposalError::PcztCreation(format!("Builder failed: {:?}", e)))?;
 
     // Create PCZT from parts using Creator role
-    let pczt = Creator::build_from_parts(pczt_result.pczt_parts)
+    let mut pczt = Creator::build_from_parts(pczt_result.pczt_parts)
         .ok_or_else(|| ProposalError::PcztCreation("Failed to build PCZT from parts".to_string()))?;
+
+    // Use Updater role to add pubkey preimages (required for append_signature to work)
+    // This maps pubkey hashes to actual pubkeys for signature verification
+    use pczt::roles::updater::Updater;
+    let updater = Updater::new(pczt);
+    let updater = updater.update_transparent_with(|mut transparent_updater| {
+        // For each input, add the pubkey preimage
+        for (i, input) in inputs.iter().enumerate() {
+            transparent_updater.update_input_with(i, |mut input_updater| {
+                // Add the hash160 preimage (pubkey hash -> pubkey bytes)
+                input_updater.set_hash160_preimage(input.pubkey.serialize().to_vec());
+                Ok(())
+            })?;
+        }
+        Ok(())
+    }).map_err(|e| ProposalError::PcztCreation(format!("Failed to set pubkey preimages: {:?}", e)))?;
+    pczt = updater.finish();
 
     // Finalize I/O using IoFinalizer role
     let pczt = IoFinalizer::new(pczt)

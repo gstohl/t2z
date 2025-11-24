@@ -180,29 +180,53 @@ pub unsafe extern "C" fn pczt_transaction_request_free(request: *mut Transaction
     }
 }
 
-/// Proposes a new transaction
+/// Proposes a new transaction (DEPRECATED - use pczt_propose_transaction_v2)
 #[no_mangle]
 pub unsafe extern "C" fn pczt_propose_transaction(
-    inputs: *const CTransparentInput,
-    num_inputs: usize,
+    _inputs: *const CTransparentInput,
+    _num_inputs: usize,
+    _request: *const TransactionRequestHandle,
+    _pczt_out: *mut *mut PcztHandle,
+) -> ResultCode {
+    set_last_error(FfiError::NotImplemented(
+        "Use pczt_propose_transaction_v2 with serialized inputs instead".to_string()
+    ));
+    ResultCode::ErrorNotImplemented
+}
+
+/// Proposes a new transaction using serialized input bytes
+///
+/// This is the recommended FFI function that accepts inputs in the binary serialization format.
+#[no_mangle]
+pub unsafe extern "C" fn pczt_propose_transaction_v2(
+    inputs_bytes: *const u8,
+    inputs_bytes_len: usize,
     request: *const TransactionRequestHandle,
+    change_address: *const c_char,  // nullable
     pczt_out: *mut *mut PcztHandle,
 ) -> ResultCode {
-    if inputs.is_null() || request.is_null() || pczt_out.is_null() {
+    if inputs_bytes.is_null() || request.is_null() || pczt_out.is_null() {
         set_last_error(FfiError::NullPointer);
         return ResultCode::ErrorNullPointer;
     }
 
-    // Convert C inputs to Rust types
-    // Note: This is a simplified placeholder. Actual implementation needs proper
-    // conversion from the C representation
-    let inputs_slice = slice::from_raw_parts(inputs, num_inputs);
-    // TODO: Serialize inputs_slice to bytes properly
-    let inputs_bytes: &[u8] = &[];
-
+    let inputs_slice = slice::from_raw_parts(inputs_bytes, inputs_bytes_len);
     let tx_request = &*(request as *const TransactionRequest);
 
-    match propose_transaction(inputs_bytes, tx_request.clone()) {
+    // Parse optional change address
+    let change_addr = if change_address.is_null() {
+        None
+    } else {
+        match CStr::from_ptr(change_address).to_str() {
+            Ok(s) => Some(s.to_string()),
+            Err(_) => {
+                set_last_error(FfiError::InvalidUtf8);
+                return ResultCode::ErrorInvalidUtf8;
+            }
+        }
+    };
+
+    match propose_transaction(inputs_slice, tx_request.clone(), change_addr) {
         Ok(pczt) => {
             let boxed_pczt = Box::new(pczt);
             *pczt_out = Box::into_raw(boxed_pczt) as *mut PcztHandle;

@@ -59,9 +59,33 @@ pub fn payment_with_memo() -> Payment {
 }
 
 /// Sample transparent input data
-/// Returns empty - callers should use create_test_pczt() for testing
+/// Creates a realistic test input with proper serialization format
 pub fn sample_transparent_inputs() -> Vec<u8> {
-    vec![]
+    use t2z::types::{TransparentInput, serialize_transparent_inputs};
+    use zcash_transparent::address::TransparentAddress;
+
+    // Create a test keypair (same as used in create_test_pczt)
+    let secp = secp256k1::Secp256k1::new();
+    let sk = secp256k1::SecretKey::from_slice(&[1u8; 32]).unwrap();
+    let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &sk);
+    let transparent_addr = TransparentAddress::from_pubkey(&pubkey);
+
+    // Create script pubkey - convert to Script which has write() method
+    let script: zcash_transparent::address::Script = transparent_addr.script().into();
+    let mut script_bytes = Vec::new();
+    script.write(&mut script_bytes).unwrap();
+
+    // Create a sample UTXO input with 1 ZEC
+    let input = TransparentInput {
+        pubkey,
+        txid: [0u8; 32],  // Fake txid for testing
+        vout: 0,
+        amount: amounts::ONE_ZEC, // 1 ZEC
+        script_pubkey: script_bytes,
+    };
+
+    // Serialize using the standard format
+    serialize_transparent_inputs(&[input])
 }
 
 /// Test-only helper to create a PCZT with realistic transparent inputs
