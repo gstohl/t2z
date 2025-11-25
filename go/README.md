@@ -8,43 +8,36 @@ Go bindings for the t2z (Transparent to Zcash) library using CGO.
 
 ## Status
 
-✅ **Complete** - All 8 API functions implemented and tested (9/9 tests passing)
+All API functions implemented and tested
 
 ## Features
 
-- **Complete API Coverage**: All 8 required functions implemented
+- **Complete API Coverage**: All required functions implemented
   - `ProposeTransaction` / `ProposeTransactionWithChange`
   - `ProveTransaction`
+  - `VerifyBeforeSigning`
   - `GetSighash`
   - `AppendSignature`
   - `FinalizeAndExtract`
   - `Parse` / `Serialize`
-  - `Combine`
-  - `VerifyBeforeSigning`
 
-- **Proper secp256k1 Support**: Uses `decred/secp256k1` for Bitcoin/Zcash-compatible signing
-- **Memory-Safe CGO Bindings**: Explicit ownership semantics documented
-- **Complete Test Coverage**: 9 tests covering all workflows
+- **Native Performance**: CGO bindings to Rust core library
+- **Type Safety**: Full Go type definitions
+- **Memory Safe**: Explicit ownership semantics documented
 - **Hardware Wallet Support**: External signing via `GetSighash` + `AppendSignature`
 
 ## Installation
 
 ### Prerequisites
 
-Since this is a **private repository**, you need to configure Git authentication:
+This is a **private repository**. Configure Git authentication:
 
 ```bash
 # Option 1: SSH (recommended)
-# Ensure your SSH key is added to GitHub
 ssh -T git@github.com
 
 # Option 2: HTTPS with token
-# Set up Git credential helper with personal access token
 git config --global credential.helper store
-
-# Configure Go to use private repo
-export GOPRIVATE=github.com/gstohl/t2z
-# Add to your ~/.bashrc or ~/.zshrc to persist
 ```
 
 ### Building
@@ -62,7 +55,7 @@ cargo build --release
 cd ../go
 go mod download
 
-# Run tests to verify
+# Run tests
 go test -v
 ```
 
@@ -90,7 +83,7 @@ go get github.com/gstohl/t2z/go@main
 
 See the [examples/](examples/) directory for complete working examples:
 
-- **[basic/](examples/basic/)** - Simple transparent→transparent transaction
+- **[basic/](examples/basic/)** - Simple transparent->transparent transaction
 - **[hardware_wallet/](examples/hardware_wallet/)** - External signing workflow with hardware wallets
 
 ### Basic Usage
@@ -121,7 +114,7 @@ func main() {
         {
             Pubkey:       pubkeyBytes,     // Your 33-byte compressed pubkey
             TxID:         txidBytes,       // 32-byte transaction ID
-            Vout:         0,                // Output index
+            Vout:         0,               // Output index
             Amount:       100_000_000,     // 1 ZEC in zatoshis
             ScriptPubKey: scriptPubKey,    // P2PKH script from address
         },
@@ -153,16 +146,184 @@ func main() {
 }
 ```
 
+## API Reference
+
+### Types
+
+#### `Payment`
+
+```go
+type Payment struct {
+    // Address can be a transparent address (starts with 't')
+    // or a unified address with Orchard receiver (starts with 'u')
+    Address string
+
+    // Amount in zatoshis (1 ZEC = 100,000,000 zatoshis)
+    Amount uint64
+
+    // Optional memo for shielded outputs (max 512 bytes)
+    Memo string
+
+    // Optional label for the recipient
+    Label string
+
+    // Optional message
+    Message string
+}
+```
+
+#### `TransparentInput`
+
+```go
+type TransparentInput struct {
+    // Pubkey is the compressed secp256k1 public key (33 bytes)
+    Pubkey []byte
+
+    // TxID is the transaction ID of the UTXO being spent (32 bytes)
+    TxID [32]byte
+
+    // Vout is the output index in the previous transaction
+    Vout uint32
+
+    // Amount in zatoshis
+    Amount uint64
+
+    // ScriptPubKey is the script of the UTXO being spent
+    ScriptPubKey []byte
+}
+```
+
+#### `TransparentOutput`
+
+```go
+type TransparentOutput struct {
+    // ScriptPubKey is the P2PKH script of the output (raw bytes, no CompactSize prefix)
+    ScriptPubKey []byte
+
+    // Value in zatoshis
+    Value uint64
+}
+```
+
+#### `TransactionRequest`
+
+```go
+type TransactionRequest struct {
+    Payments []Payment
+}
+
+// Create a new transaction request
+func NewTransactionRequest(payments []Payment) (*TransactionRequest, error)
+
+// Create with specific target block height
+func NewTransactionRequestWithTargetHeight(payments []Payment, targetHeight uint32) (*TransactionRequest, error)
+
+// Set the target block height for consensus branch ID selection
+func (r *TransactionRequest) SetTargetHeight(height uint32) error
+
+// Free the transaction request
+func (r *TransactionRequest) Free()
+```
+
+#### `PCZT`
+
+```go
+type PCZT struct {
+    // opaque handle
+}
+
+// Free the PCZT handle
+// Note: Most operations consume the PCZT
+func (p *PCZT) Free()
+```
+
+### Functions
+
+#### `ProposeTransaction()`
+
+Create a PCZT from transparent inputs and transaction request.
+
+```go
+func ProposeTransaction(inputs []TransparentInput, request *TransactionRequest) (*PCZT, error)
+```
+
+#### `ProposeTransactionWithChange()`
+
+Create a PCZT with explicit change handling.
+
+```go
+func ProposeTransactionWithChange(inputs []TransparentInput, request *TransactionRequest, changeAddress string) (*PCZT, error)
+```
+
+#### `ProveTransaction()`
+
+Add Orchard proofs to the PCZT. **Consumes the input PCZT**.
+
+```go
+func ProveTransaction(pczt *PCZT) (*PCZT, error)
+```
+
+#### `VerifyBeforeSigning()`
+
+Verify the PCZT before signing. Does NOT consume the PCZT.
+
+```go
+func VerifyBeforeSigning(pczt *PCZT, request *TransactionRequest, expectedChange []TransparentOutput) error
+```
+
+#### `GetSighash()`
+
+Get signature hash for a transparent input. Does NOT consume the PCZT.
+
+```go
+func GetSighash(pczt *PCZT, inputIndex uint) ([32]byte, error)
+```
+
+#### `AppendSignature()`
+
+Append an external signature to the PCZT. **Consumes the input PCZT**.
+
+```go
+func AppendSignature(pczt *PCZT, inputIndex uint, signature [64]byte) (*PCZT, error)
+```
+
+#### `FinalizeAndExtract()`
+
+Finalize the PCZT and extract transaction bytes. **Consumes the input PCZT**.
+
+```go
+func FinalizeAndExtract(pczt *PCZT) ([]byte, error)
+```
+
+#### `Serialize()`
+
+Serialize PCZT to bytes. Does NOT consume the PCZT.
+
+```go
+func Serialize(pczt *PCZT) ([]byte, error)
+```
+
+#### `Parse()`
+
+Parse PCZT from bytes.
+
+```go
+func Parse(pcztBytes []byte) (*PCZT, error)
+```
+
 ## Memory Management
 
 **Important:** Most PCZT functions **consume** their input handles:
-- ✅ `ProveTransaction(pczt)` - consumes `pczt`
-- ✅ `AppendSignature(pczt, ...)` - consumes `pczt`
-- ✅ `FinalizeAndExtract(pczt)` - consumes `pczt`
+
+- `ProveTransaction(pczt)` - consumes `pczt`
+- `AppendSignature(pczt, ...)` - consumes `pczt`
+- `FinalizeAndExtract(pczt)` - consumes `pczt`
 
 **Non-consuming functions:**
-- ✅ `GetSighash(pczt, ...)` - does NOT consume
-- ✅ `Serialize(pczt)` - does NOT consume
+
+- `GetSighash(pczt, ...)` - does NOT consume
+- `Serialize(pczt)` - does NOT consume
+- `VerifyBeforeSigning(pczt, ...)` - does NOT consume
 
 Only call `Free()` on PCZT objects that won't be consumed by another function.
 
@@ -174,6 +335,7 @@ Complete working examples are available in the [examples/](examples/) directory:
 - **[hardware_wallet/](examples/hardware_wallet/)** - Hardware wallet integration with PCZT serialization
 
 Run an example:
+
 ```bash
 cd examples/basic
 go run main.go
@@ -205,11 +367,81 @@ go test -cover
 go test -v -run Example
 ```
 
+## Error Handling
+
+All functions return standard Go errors on failure:
+
+```go
+pczt, err := t2z.ProposeTransaction(inputs, request)
+if err != nil {
+    log.Fatalf("Failed to propose transaction: %v", err)
+}
+```
+
+Error codes include:
+
+- `ErrorProposal`: Invalid transaction request
+- `ErrorProver`: Failed to generate proofs
+- `ErrorVerification`: Verification failed
+- `ErrorSighash`: Failed to compute sighash
+- `ErrorSignature`: Signature verification failed
+- `ErrorFinalization`: Failed to finalize transaction
+- `ErrorParse`: Invalid PCZT format
+
+## Performance
+
+- **Native Speed**: C-level performance via Rust FFI
+- **Zero-Copy**: Efficient buffer handling where possible
+- **Lazy Loading**: Proving keys loaded on first use
+- **Minimal Overhead**: CGO bindings add negligible latency
+
+## Security
+
+- **Memory Safety**: Rust's ownership system prevents memory bugs
+- **Type Safety**: Go's type system catches errors at compile time
+- **Input Validation**: All inputs validated at FFI boundary
+- **No Unsafe Code**: Minimal unsafe blocks, all audited
+
+## Troubleshooting
+
+### Build Errors
+
+If you encounter build errors:
+
+```bash
+# Ensure Rust library is built
+cd ../rust && cargo build --release
+
+# Clean and rebuild Go
+cd ../go
+go clean -cache
+go build
+```
+
+### Runtime Errors
+
+**"Invalid signature"**: Ensure you're using secp256k1, not P-256 or other curves. Use `github.com/decred/dcrd/dcrec/secp256k1/v4` for signing.
+
+**"Invalid script"**: Ensure P2PKH script includes OP_PUSHDATA1 (0x19) prefix (26 bytes total).
+
 ## Dependencies
 
 ```go
 require (
-    github.com/btcsuite/btcd/btcec/v2 v2.3.6
     github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
 )
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - See [LICENSE](../LICENSE) for details.
+
+## Links
+
+- [GitHub Repository](https://github.com/gstohl/t2z)
+- [ZIP 374: PCZT Specification](https://zips.z.cash/zip-0374)
+- [Zcash Documentation](https://zcash.readthedocs.io/)

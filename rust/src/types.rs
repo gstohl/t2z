@@ -42,7 +42,16 @@ impl TransparentInput {
     pub fn txout(&self) -> Result<TxOut, &'static str> {
         let value = Zatoshis::from_u64(self.amount)
             .map_err(|_| "Invalid amount")?;
-        let script = Script::read(&self.script_pubkey[..])
+
+        // The script_pubkey is stored as raw bytes (no CompactSize prefix)
+        // We need to wrap it with a length prefix for Script::read()
+        use zcash_encoding::CompactSize;
+        let mut script_with_prefix = Vec::new();
+        CompactSize::write(&mut script_with_prefix, self.script_pubkey.len())
+            .map_err(|_| "Failed to write script length")?;
+        script_with_prefix.extend_from_slice(&self.script_pubkey);
+
+        let script = Script::read(&script_with_prefix[..])
             .map_err(|_| "Invalid script")?;
         Ok(TxOut::new(value, script))
     }
@@ -178,6 +187,9 @@ pub struct TransactionRequest {
     pub payments: Vec<Payment>,
     /// Optional memo for the transaction
     pub memo: Option<String>,
+    /// Optional target block height for consensus branch ID selection
+    /// If None, defaults to a recent mainnet height
+    pub target_height: Option<u32>,
 }
 
 /// A single payment to a recipient
@@ -200,6 +212,7 @@ impl TransactionRequest {
         Self {
             payments,
             memo: None,
+            target_height: None,
         }
     }
 

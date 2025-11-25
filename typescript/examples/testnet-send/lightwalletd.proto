@@ -1,0 +1,64 @@
+// Simplified lightwalletd protocol definitions
+// Based on: https://github.com/zcash/lightwalletd
+
+syntax = "proto3";
+
+package cash.z.wallet.sdk.rpc;
+
+service CompactTxStreamer {
+  // Get the latest block height
+  rpc GetLatestBlock(ChainSpec) returns (BlockID) {}
+
+  // Get UTXOs for a given address
+  rpc GetAddressUtxos(GetAddressUtxosArg) returns (stream GetAddressUtxosReply) {}
+
+  // Send a raw transaction
+  rpc SendTransaction(RawTransaction) returns (SendResponse) {}
+
+  // Get blockchain info
+  rpc GetLightdInfo(Empty) returns (LightdInfo) {}
+}
+
+message ChainSpec {}
+
+message Empty {}
+
+message BlockID {
+  uint64 height = 1;
+  bytes hash = 2;
+  uint32 time = 3;
+}
+
+message GetAddressUtxosArg {
+  repeated string addresses = 1;
+  uint64 startHeight = 2;
+  uint32 maxEntries = 3;
+}
+
+message GetAddressUtxosReply {
+  bytes txid = 1;
+  int32 index = 2;
+  bytes script = 3;
+  int64 valueZat = 4;
+  uint64 height = 5;
+}
+
+message RawTransaction {
+  bytes data = 1;
+  uint64 height = 2;
+}
+
+message SendResponse {
+  int32 errorCode = 1;
+  string errorMessage = 2;
+}
+
+message LightdInfo {
+  string version = 1;
+  string vendor = 2;
+  bool taddrSupport = 3;
+  string chainName = 4;
+  uint64 saplingActivationHeight = 5;
+  string consensusBranchId = 6;
+  uint64 blockHeight = 7;
+}

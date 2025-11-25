@@ -1,0 +1,65 @@
+{
+  "name": "t2z",
+  "version": "0.1.0",
+  "description": "TypeScript/Node.js bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "t2z",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "artifacts": "napi artifacts",
+    "version": "napi version"
+  },
+  "keywords": [
+    "zcash",
+    "pczt",
+    "cryptocurrency",
+    "blockchain",
+    "shielded",
+    "orchard",
+    "hardware-wallet",
+    "napi-rs"
+  ],
+  "author": "Dominik Gstöhl",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/gstohl/t2z.git",
+    "directory": "typescript"
+  },
+  "dependencies": {
+    "@noble/secp256k1": "^2.0.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

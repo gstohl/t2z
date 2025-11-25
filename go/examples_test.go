@@ -186,3 +186,42 @@ func ExampleGetSighash() {
 	fmt.Printf("Sighash length: %d bytes\n", len(sighash))
 	// Output: Sighash length: 32 bytes
 }
+
+// ExampleNewTransactionRequestWithTargetHeight demonstrates creating a request with target height.
+func ExampleNewTransactionRequestWithTargetHeight() {
+	payments := []t2z.Payment{
+		{
+			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
+			Amount:  100_000,
+		},
+	}
+
+	// Create request with specific target block height
+	request, err := t2z.NewTransactionRequestWithTargetHeight(payments, 2_000_000)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer request.Free()
+
+	fmt.Printf("Created request with %d payment(s)\n", len(request.Payments))
+	// Output: Created request with 1 payment(s)
+}
+
+// ExampleTransactionRequest_SetTargetHeight demonstrates setting target height on existing request.
+func ExampleTransactionRequest_SetTargetHeight() {
+	payments := []t2z.Payment{
+		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+	}
+
+	request, _ := t2z.NewTransactionRequest(payments)
+	defer request.Free()
+
+	// Set target height after creation
+	err := request.SetTargetHeight(2_000_000)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Target height set successfully")
+	// Output: Target height set successfully
+}

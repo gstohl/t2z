@@ -122,6 +122,14 @@ enum ResultCode pczt_propose_transaction(const struct CTransparentInput *aInputs
 ;
 
 /**
+ * Sets the target height for a transaction request
+ */
+
+enum ResultCode pczt_transaction_request_set_target_height(struct TransactionRequestHandle *aRequest,
+                                                           uint32_t aTargetHeight)
+;
+
+/**
  * Proposes a new transaction using serialized input bytes
  *
  * This is the recommended FFI function that accepts inputs in the binary serialization format.
@@ -140,6 +148,16 @@ enum ResultCode pczt_propose_transaction_v2(const uint8_t *aInputsBytes,
 
 enum ResultCode pczt_prove_transaction(struct PcztHandle *aPczt,
                                        struct PcztHandle **aPcztOut)
+;
+
+/**
+ * Verifies the PCZT before signing
+ */
+
+enum ResultCode pczt_verify_before_signing(const struct PcztHandle *aPczt,
+                                           const struct TransactionRequestHandle *aRequest,
+                                           const struct CTransparentOutput *aExpectedChange,
+                                           uintptr_t aExpectedChangeLen)
 ;
 
 /**

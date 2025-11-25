@@ -1,0 +1,26 @@
+[package]
+name = "t2z-napi"
+version = "0.1.0"
+edition = "2021"
+authors = ["Dominik Gstöhl"]
+license = "MIT"
+description = "Node.js bindings for t2z library via napi-rs"
+repository = "https://github.com/gstohl/t2z"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Napi-rs for Node.js bindings
+napi = "2"
+napi-derive = "2"
+
+# Required for error handling
+thiserror = "1.0"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = true

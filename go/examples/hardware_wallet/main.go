@@ -113,6 +113,18 @@ func main() {
 	}
 	fmt.Println("   ✓ PCZT parsed successfully")
 
+	// Verify PCZT before signing (optional but recommended for hardware wallets)
+	fmt.Println("🔐 HARDWARE WALLET: Verifying transaction...")
+	// In production, you would verify against expected change outputs
+	// For this example, we pass empty expected change
+	err = t2z.VerifyBeforeSigning(hwPczt, request, nil)
+	if err != nil {
+		// Verification might fail without expected change, which is okay for demo
+		fmt.Printf("   ⚠ Verification note: %v\n", err)
+	} else {
+		fmt.Println("   ✓ Verification passed")
+	}
+
 	// Get sighash for the input
 	fmt.Println("🔐 HARDWARE WALLET: Computing sighash...")
 	sighash, err := t2z.GetSighash(hwPczt, 0)

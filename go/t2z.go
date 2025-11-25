@@ -526,3 +526,106 @@ func Serialize(pczt *PCZT) ([]byte, error) {
 
 	return result, nil
 }
+
+// TransparentOutput represents a transparent transaction output.
+// This is used for verifying expected change outputs.
+type TransparentOutput struct {
+	// ScriptPubKey is the P2PKH script of the output (raw bytes, no CompactSize prefix)
+	ScriptPubKey []byte
+
+	// Value in zatoshis
+	Value uint64
+}
+
+// VerifyBeforeSigning verifies the PCZT before signing.
+//
+// This function performs verification checks to ensure the PCZT matches
+// the expected transaction request and change outputs.
+//
+// Parameters:
+//   - pczt: The PCZT to verify (not consumed)
+//   - request: The original transaction request
+//   - expectedChange: Expected change outputs for verification
+//
+// Returns an error if verification fails.
+func VerifyBeforeSigning(pczt *PCZT, request *TransactionRequest, expectedChange []TransparentOutput) error {
+	if pczt == nil || pczt.handle == nil {
+		return errors.New("invalid PCZT")
+	}
+	if request == nil || request.handle == nil {
+		return errors.New("invalid transaction request")
+	}
+
+	// Convert expectedChange to C array
+	var cOutputs []C.CTransparentOutput
+	for _, output := range expectedChange {
+		cOutput := C.CTransparentOutput{
+			value: C.uint64_t(output.Value),
+		}
+		if len(output.ScriptPubKey) > 0 {
+			cOutput.script_pub_key = (*C.uchar)(unsafe.Pointer(&output.ScriptPubKey[0]))
+			cOutput.script_pub_key_len = C.uintptr_t(len(output.ScriptPubKey))
+		}
+		cOutputs = append(cOutputs, cOutput)
+	}
+
+	var cOutputsPtr *C.CTransparentOutput
+	if len(cOutputs) > 0 {
+		cOutputsPtr = &cOutputs[0]
+	}
+
+	code := C.pczt_verify_before_signing(
+		pczt.handle,
+		request.handle,
+		cOutputsPtr,
+		C.uintptr_t(len(expectedChange)),
+	)
+
+	if code != C.SUCCESS {
+		return wrapError(ResultCode(code))
+	}
+
+	return nil
+}
+
+// SetTargetHeight sets the target block height for consensus branch ID selection.
+//
+// This is important for ensuring the transaction uses the correct consensus rules.
+//
+// Parameters:
+//   - height: The target block height
+func (r *TransactionRequest) SetTargetHeight(height uint32) error {
+	if r == nil || r.handle == nil {
+		return errors.New("invalid transaction request")
+	}
+
+	code := C.pczt_transaction_request_set_target_height(
+		r.handle,
+		C.uint32_t(height),
+	)
+
+	if code != C.SUCCESS {
+		return wrapError(ResultCode(code))
+	}
+
+	return nil
+}
+
+// NewTransactionRequestWithTargetHeight creates a new transaction request
+// with a specific target block height.
+//
+// This is a convenience function that combines NewTransactionRequest and SetTargetHeight.
+func NewTransactionRequestWithTargetHeight(payments []Payment, targetHeight uint32) (*TransactionRequest, error) {
+	req, err := NewTransactionRequest(payments)
+	if err != nil {
+		return nil, err
+	}
+
+	err = req.SetTargetHeight(targetHeight)
+	if err != nil {
+		req.Free()
+		return nil, err
+	}
+
+	return req, nil
+}

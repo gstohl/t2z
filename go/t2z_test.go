@@ -84,6 +84,48 @@ func TestNewTransactionRequestEmpty(t *testing.T) {
 	}
 }
 
+// Test SetTargetHeight method
+func TestSetTargetHeight(t *testing.T) {
+	payments := []Payment{
+		{
+			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
+			Amount:  100_000,
+		},
+	}
+
+	req, err := NewTransactionRequest(payments)
+	if err != nil {
+		t.Fatalf("Failed to create transaction request: %v", err)
+	}
+	defer req.Free()
+
+	// Set target height
+	err = req.SetTargetHeight(2_000_000)
+	if err != nil {
+		t.Fatalf("Failed to set target height: %v", err)
+	}
+}
+
+// Test NewTransactionRequestWithTargetHeight
+func TestNewTransactionRequestWithTargetHeight(t *testing.T) {
+	payments := []Payment{
+		{
+			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
+			Amount:  100_000,
+		},
+	}
+
+	req, err := NewTransactionRequestWithTargetHeight(payments, 2_000_000)
+	if err != nil {
+		t.Fatalf("Failed to create transaction request with target height: %v", err)
+	}
+	defer req.Free()
+
+	if len(req.Payments) != 1 {
+		t.Errorf("Expected 1 payment, got %d", len(req.Payments))
+	}
+}
+
 // Test transparent input serialization
 func TestSerializeTransparentInputs(t *testing.T) {
 	// Create a test pubkey (33 bytes, compressed secp256k1)

@@ -70,15 +70,33 @@ pub fn sample_transparent_inputs() -> Vec<u8> {
     let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &sk);
     let transparent_addr = TransparentAddress::from_pubkey(&pubkey);
 
-    // Create script pubkey - convert to Script which has write() method
+    // Get the script and write it to get the bytes (includes CompactSize prefix)
+    // Then extract just the script part (skip the CompactSize length prefix)
     let script: zcash_transparent::address::Script = transparent_addr.script().into();
-    let mut script_bytes = Vec::new();
-    script.write(&mut script_bytes).unwrap();
+    let mut script_with_prefix = Vec::new();
+    script.write(&mut script_with_prefix).unwrap();
+
+    // Script::write() outputs: [CompactSize length][script bytes]
+    // We need to skip the CompactSize prefix to get raw script bytes
+    // For P2PKH scripts (25 bytes), the prefix is 1 byte (0x19)
+    let script_bytes = if script_with_prefix.len() > 0 && script_with_prefix[0] < 0xfd {
+        // Single-byte length prefix
+        script_with_prefix[1..].to_vec()
+    } else {
+        // Shouldn't happen for standard P2PKH scripts, but handle it anyway
+        script_with_prefix
+    };
 
     // Create a sample UTXO input with 1 ZEC
+    // Use a realistic-looking txid (sha256 of some test data)
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(b"test transaction for t2z");
+    let txid: [u8; 32] = hasher.finalize().into();
+
     let input = TransparentInput {
         pubkey,
-        txid: [0u8; 32],  // Fake txid for testing
+        txid,  // Valid-looking txid
         vout: 0,
         amount: amounts::ONE_ZEC, // 1 ZEC
         script_pubkey: script_bytes,

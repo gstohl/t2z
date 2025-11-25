@@ -1,0 +1,33 @@
+{
+  "name": "zebrad-t2z-examples",
+  "version": "1.0.0",
+  "description": "Comprehensive t2z examples using Zebra regtest (future-proof!)",
+  "type": "module",
+  "scripts": {
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down -v",
+    "docker:logs:zebra": "docker-compose logs -f zebra",
+    "docker:logs:examples": "docker-compose logs -f examples",
+    "docker:shell": "docker-compose exec examples sh",
+    "setup": "docker-compose exec examples npm run setup:internal",
+    "setup:internal": "tsx src/setup.ts",
+    "example:1": "docker-compose exec examples npm run example:1:internal",
+    "example:1:internal": "tsx src/examples/1-single-output.ts",
+    "example:2": "docker-compose exec examples npm run example:2:internal",
+    "example:2:internal": "tsx src/examples/2-multiple-outputs.ts",
+    "example:3": "docker-compose exec examples npm run example:3:internal",
+    "example:3:internal": "tsx src/examples/3-mixed-outputs.ts",
+    "example:4": "docker-compose exec examples npm run example:4:internal",
+    "example:4:internal": "tsx src/examples/4-attack-scenario.ts",
+    "all": "npm run example:1 && npm run example:2 && npm run example:3 && npm run example:4"
+  },
+  "dependencies": {
+    "t2z": "file:../..",
+    "@mayaprotocol/zcash-ts": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

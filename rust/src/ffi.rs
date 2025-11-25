@@ -194,6 +194,22 @@ pub unsafe extern "C" fn pczt_propose_transaction(
     ResultCode::ErrorNotImplemented
 }
 
+/// Sets the target height for a transaction request
+#[no_mangle]
+pub unsafe extern "C" fn pczt_transaction_request_set_target_height(
+    request: *mut TransactionRequestHandle,
+    target_height: u32,
+) -> ResultCode {
+    if request.is_null() {
+        set_last_error(FfiError::NullPointer);
+        return ResultCode::ErrorNullPointer;
+    }
+
+    let tx_request = &mut *(request as *mut TransactionRequest);
+    tx_request.target_height = Some(target_height);
+    ResultCode::Success
+}
+
 /// Proposes a new transaction using serialized input bytes
 ///
 /// This is the recommended FFI function that accepts inputs in the binary serialization format.
@@ -261,6 +277,82 @@ pub unsafe extern "C" fn pczt_prove_transaction(
         Err(e) => {
             set_last_error(FfiError::Prover(e));
             ResultCode::ErrorProver
+        }
+    }
+}
+
+/// Verifies the PCZT before signing
+#[no_mangle]
+pub unsafe extern "C" fn pczt_verify_before_signing(
+    pczt: *const PcztHandle,
+    request: *const TransactionRequestHandle,
+    expected_change: *const CTransparentOutput,
+    expected_change_len: usize,
+) -> ResultCode {
+    if pczt.is_null() || request.is_null() {
+        set_last_error(FfiError::NullPointer);
+        return ResultCode::ErrorNullPointer;
+    }
+
+    let rust_pczt = &*(pczt as *const Pczt);
+    let tx_request = &*(request as *const TransactionRequest);
+
+    // Parse expected change outputs
+    let mut change_outputs = Vec::new();
+    if !expected_change.is_null() && expected_change_len > 0 {
+        let change_slice = slice::from_raw_parts(expected_change, expected_change_len);
+
+        for c_output in change_slice {
+            if c_output.script_pub_key.is_null() {
+                set_last_error(FfiError::NullPointer);
+                return ResultCode::ErrorNullPointer;
+            }
+
+            let script_bytes = slice::from_raw_parts(
+                c_output.script_pub_key,
+                c_output.script_pub_key_len
+            );
+
+            // Parse script with CompactSize prefix
+            use zcash_encoding::CompactSize;
+            let mut script_with_prefix = Vec::new();
+            if let Err(_) = CompactSize::write(&mut script_with_prefix, script_bytes.len()) {
+                set_last_error(FfiError::Verification(
+                    crate::error::VerificationFailure::OutputMismatch("Invalid script length".to_string())
+                ));
+                return ResultCode::ErrorVerification;
+            }
+            script_with_prefix.extend_from_slice(script_bytes);
+
+            let script = match zcash_transparent::address::Script::read(&script_with_prefix[..]) {
+                Ok(s) => s,
+                Err(_) => {
+                    set_last_error(FfiError::Verification(
+                        crate::error::VerificationFailure::OutputMismatch("Invalid script".to_string())
+                    ));
+                    return ResultCode::ErrorVerification;
+                }
+            };
+
+            let value = match zcash_protocol::value::Zatoshis::from_u64(c_output.value) {
+                Ok(v) => v,
+                Err(_) => {
+                    set_last_error(FfiError::Verification(
+                        crate::error::VerificationFailure::OutputMismatch("Invalid value".to_string())
+                    ));
+                    return ResultCode::ErrorVerification;
+                }
+            };
+
+            change_outputs.push(zcash_transparent::bundle::TxOut::new(value, script));
+        }
+    }
+
+    match verify_before_signing(rust_pczt, tx_request, &change_outputs) {
+        Ok(_) => ResultCode::Success,
+        Err(e) => {
+            set_last_error(FfiError::Verification(e));
+            ResultCode::ErrorVerification
         }
     }
 }
