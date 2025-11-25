@@ -5,28 +5,13 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "index.js",
-  "types": "index.d.ts",
-  "napi": {
-    "name": "t2z",
-    "triples": {
-      "defaults": true,
-      "additional": [
-        "x86_64-apple-darwin",
-        "aarch64-apple-darwin",
-        "x86_64-unknown-linux-gnu",
-        "aarch64-unknown-linux-gnu"
-      ]
-    }
-  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "artifacts": "napi artifacts",
-    "version": "napi version"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "zcash",
@@ -36,7 +21,8 @@
     "shielded",
     "orchard",
     "hardware-wallet",
-    "napi-rs"
+    "ffi",
+    "koffi"
   ],
   "author": "Dominik Gstöhl",
   "license": "MIT",
@@ -46,10 +32,10 @@
     "directory": "typescript"
   },
   "dependencies": {
-    "@noble/secp256k1": "^2.0.0"
+    "@noble/secp256k1": "^2.0.0",
+    "koffi": "^2.14.1"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0",
     "@types/node": "^20.10.0",
     "typescript": "^5.3.3",
     "vitest": "^1.0.4"

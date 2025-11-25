@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import {
   Payment,
   TransparentInput,
+  TransparentOutput,
   TransactionRequest,
   proposeTransaction,
   proveTransaction,
@@ -78,11 +79,9 @@ describe('t2z TypeScript Bindings', () => {
       request.free();
     });
 
-    it('should allow empty payment array', () => {
-      // The C library allows empty payment arrays
-      const request = new TransactionRequest([]);
-      expect(request).toBeDefined();
-      request.free();
+    it('should reject empty payment array', () => {
+      // The C FFI does not allow null payment pointers
+      expect(() => new TransactionRequest([])).toThrow(/Null pointer/);
     });
   });
 

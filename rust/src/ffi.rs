@@ -493,6 +493,61 @@ pub unsafe extern "C" fn pczt_serialize(
     ResultCode::Success
 }
 
+/// Combines multiple PCZTs into one
+///
+/// This is useful for parallel signing workflows where different parts of the transaction
+/// are processed independently and need to be merged.
+///
+/// # Arguments
+/// * `pczts` - Array of PCZT handles to combine
+/// * `num_pczts` - Number of PCZTs in the array
+/// * `pczt_out` - Output pointer for the combined PCZT handle
+///
+/// # Returns
+/// * `ResultCode::Success` on success
+/// * `ResultCode::ErrorCombine` if combination fails
+#[no_mangle]
+pub unsafe extern "C" fn pczt_combine(
+    pczts: *const *mut PcztHandle,
+    num_pczts: usize,
+    pczt_out: *mut *mut PcztHandle,
+) -> ResultCode {
+    if pczts.is_null() || pczt_out.is_null() {
+        set_last_error(FfiError::NullPointer);
+        return ResultCode::ErrorNullPointer;
+    }
+
+    if num_pczts == 0 {
+        set_last_error(FfiError::Combine(crate::error::CombineError::NoPczts));
+        return ResultCode::ErrorCombine;
+    }
+
+    // Collect PCZT handles into Vec, taking ownership
+    let pczt_ptrs = slice::from_raw_parts(pczts, num_pczts);
+    let mut rust_pczts = Vec::with_capacity(num_pczts);
+
+    for &ptr in pczt_ptrs {
+        if ptr.is_null() {
+            set_last_error(FfiError::NullPointer);
+            return ResultCode::ErrorNullPointer;
+        }
+        // Take ownership of each PCZT
+        rust_pczts.push(*Box::from_raw(ptr as *mut Pczt));
+    }
+
+    match combine(rust_pczts) {
+        Ok(combined) => {
+            let boxed = Box::new(combined);
+            *pczt_out = Box::into_raw(boxed) as *mut PcztHandle;
+            ResultCode::Success
+        }
+        Err(e) => {
+            set_last_error(FfiError::Combine(e));
+            ResultCode::ErrorCombine
+        }
+    }
+}
+
 /// Frees a PCZT handle
 #[no_mangle]
 pub unsafe extern "C" fn pczt_free(pczt: *mut PcztHandle) {

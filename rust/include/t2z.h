@@ -207,6 +207,27 @@ enum ResultCode pczt_serialize(const struct PcztHandle *aPczt,
 ;
 
 /**
+ * Combines multiple PCZTs into one
+ *
+ * This is useful for parallel signing workflows where different parts of the transaction
+ * are processed independently and need to be merged.
+ *
+ * # Arguments
+ * * `pczts` - Array of PCZT handles to combine
+ * * `num_pczts` - Number of PCZTs in the array
+ * * `pczt_out` - Output pointer for the combined PCZT handle
+ *
+ * # Returns
+ * * `ResultCode::Success` on success
+ * * `ResultCode::ErrorCombine` if combination fails
+ */
+
+enum ResultCode pczt_combine(struct PcztHandle *const *aPczts,
+                             uintptr_t aNumPczts,
+                             struct PcztHandle **aPcztOut)
+;
+
+/**
  * Frees a PCZT handle
  */
 

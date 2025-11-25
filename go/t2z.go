@@ -527,6 +527,51 @@ func Serialize(pczt *PCZT) ([]byte, error) {
 	return result, nil
 }
 
+// Combine merges multiple PCZTs into one.
+//
+// This is useful for parallel signing workflows where different parts of the
+// transaction are processed independently and need to be merged.
+//
+// All input PCZTs are consumed by this function.
+//
+// Parameters:
+//   - pczts: Array of PCZTs to combine
+//
+// Returns the combined PCZT or an error.
+func Combine(pczts []*PCZT) (*PCZT, error) {
+	if len(pczts) == 0 {
+		return nil, errors.New("at least one PCZT is required")
+	}
+
+	// Validate all PCZTs
+	for i, pczt := range pczts {
+		if pczt == nil || pczt.handle == nil {
+			return nil, fmt.Errorf("invalid PCZT at index %d", i)
+		}
+	}
+
+	// Build array of handles
+	handles := make([]*C.PcztHandle, len(pczts))
+	for i, pczt := range pczts {
+		handles[i] = pczt.handle
+		pczt.handle = nil // Transfer ownership
+	}
+
+	var outHandle *C.PcztHandle
+	code := C.pczt_combine(
+		&handles[0],
+		C.uintptr_t(len(handles)),
+		&outHandle,
+	)
+
+	if code != C.SUCCESS {
+		return nil, wrapError(ResultCode(code))
+	}
+
+	result := &PCZT{handle: outHandle}
+	return result, nil
+}
+
 // TransparentOutput represents a transparent transaction output.
 // This is used for verifying expected change outputs.
 type TransparentOutput struct {
