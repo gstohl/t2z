@@ -1,141 +1,43 @@
 # t2z - Transparent to Shielded
 
-Multi-language library for sending transparent Zcash to shielded (Orchard) outputs using PCZT (ZIP 374).
+Multi-language library for sending transparent Zcash to shielded Orchard outputs using PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
-## Project Structure
+## Structure
 
 ```
 t2z/
-├── rust/              # Core Rust library with C FFI bindings
-│   ├── src/
-│   │   ├── lib.rs     # Core Rust implementation
-│   │   ├── ffi.rs     # C FFI bindings
-│   │   ├── types.rs   # Type definitions
-│   │   └── error.rs   # Error types
-│   ├── include/       # Generated C headers
-│   │   └── t2z.h
-│   └── examples/      # C usage examples
-├── typescript/        # TypeScript/Node.js bindings (TODO)
-├── kotlin/           # Kotlin/JVM bindings (TODO)
-├── java/             # Java bindings (TODO)
-├── go/               # Go bindings (TODO)
-└── REQUIREMENTS.md   # Requirements specification
+├── rust/        # Core library with C FFI
+├── go/          # Go bindings (CGO)
+├── typescript/  # TypeScript bindings (koffi)
+├── kotlin/      # Kotlin bindings (planned)
+└── java/        # Java bindings (planned)
 ```
-
-## Features
-
-- **Rust Core**: High-performance with memory safety
-- **C FFI**: Stable ABI for language bindings
-- **Auto-generated Headers**: C/C++ via cbindgen
-- **Multi-language**: TypeScript, Go, Kotlin, Java
-
-## API
-
-1. **propose_transaction** - Create PCZT from transparent inputs and payment request
-2. **prove_transaction** - Add Orchard proofs
-3. **verify_before_signing** - Optional pre-signing verification
-4. **get_sighash** - Get signature hash for inputs
-5. **append_signature** - Add signatures to PCZT
-6. **combine** - Combine multiple PCZTs
-7. **finalize_and_extract** - Finalize and extract transaction bytes
-8. **parse_pczt** / **serialize_pczt** - Serialize/deserialize PCZT
 
 ## Build
 
 ```bash
-cd rust
-cargo build --release
+cd rust && cargo build --release
 ```
 
-Output: `rust/target/release/`
-- `libt2z.dylib` (macOS)
-- `libt2z.so` (Linux)
-- `t2z.dll` (Windows)
+Outputs in `rust/target/release/`:
+- `libt2z.dylib` / `libt2z.so` / `t2z.dll`
 - `libt2z.a` (static)
 
 Header: `rust/include/t2z.h`
 
-## Language Bindings
+## API
 
-- **TypeScript**: node-ffi or napi-rs (TODO)
-- **Go**: cgo (TODO)
-- **Kotlin**: JNI/JNA (TODO)
-- **Java**: JNI (TODO)
-
-## Usage
-
-```c
-#include "t2z.h"
-
-// Create payments
-CPayment payments[] = {
-    {
-        .address = "u1unified_address",
-        .amount = 100000,
-        .memo = NULL,
-        .label = NULL,
-        .message = NULL
-    }
-};
-
-// Create transaction request
-TransactionRequestHandle* request = NULL;
-ResultCode result = t2z_transaction_request_new(payments, 1, &request);
-
-// Propose transaction
-PcztHandle* pczt = NULL;
-result = t2z_propose_transaction(inputs, num_inputs, request, &pczt);
-
-// Add proofs
-PcztHandle* proved_pczt = NULL;
-result = t2z_prove_transaction(pczt, &proved_pczt);
-
-// Get sighash and sign
-uint8_t sighash[32];
-result = t2z_get_sighash(proved_pczt, 0, &sighash);
-
-// ... sign the sighash ...
-
-// Append signature
-PcztHandle* signed_pczt = NULL;
-result = t2z_append_signature(proved_pczt, 0, signature, &signed_pczt);
-
-// Finalize and extract
-uint8_t* tx_bytes = NULL;
-size_t tx_bytes_len = 0;
-result = t2z_finalize_and_extract(signed_pczt, &tx_bytes, &tx_bytes_len);
-
-// Cleanup
-t2z_free_bytes(tx_bytes, tx_bytes_len);
-t2z_transaction_request_free(request);
-```
-
-## Dependencies
-
-This project uses a fork of librustzcash with necessary fixes for external signature support:
-
-- **Fork**: [gstohl/librustzcash](https://github.com/gstohl/librustzcash)
-- **Branch**: `pczt-append-transparent-sigs`
-- **Why Fork?**
-  - Upstream commit [370bf25](https://github.com/zcash/librustzcash/commit/370bf256abe3f0037e6bc04cb8a4db176bde0f0a) has bugs (calls `append_signature()` but methods are named `apply_signature()`)
-  - Added `get_transparent_sighash()` convenience method for external signers
-  - Required for PCZT transparent signature handling
-
-### Core Dependencies
-
-- `pczt` - PCZT implementation (ZIP 374)
-- `zcash_primitives` - Core Zcash primitives
-- `orchard` - Orchard protocol implementation
-- `zcash_transparent` - Transparent address handling
-- `secp256k1` - ECDSA signature support
+| Function | Description |
+|----------|-------------|
+| `propose_transaction` | Create PCZT from inputs |
+| `prove_transaction` | Add Orchard proofs |
+| `get_sighash` | Get signature hash for input |
+| `append_signature` | Add signature to PCZT |
+| `combine` | Merge multiple PCZTs |
+| `finalize_and_extract` | Extract transaction bytes |
+| `parse` / `serialize` | PCZT serialization |
+| `verify_before_signing` | Pre-signing verification |
 
 ## License
 
-MIT or Apache-2.0
-
-## References
-
-- [ZIP 374: PCZT Specification](https://zips.z.cash/zip-0374)
-- [ZIP 321: Payment Request URIs](https://zips.z.cash/zip-0321)
-- [ZIP 244: Transaction Signature Validation](https://zips.z.cash/zip-0244)
-- [librustzcash](https://github.com/zcash/librustzcash)
+MIT
