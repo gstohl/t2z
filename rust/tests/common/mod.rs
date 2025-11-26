@@ -1,4 +1,6 @@
-// Common test utilities and fixtures
+//! Common test utilities and fixtures
+#![allow(unused_imports)]
+
 pub mod fixtures;
 pub mod mock;
 

@@ -1,4 +1,6 @@
-/// Test for transparent-to-Orchard (shielded) transactions
+//! Test for transparent-to-Orchard (shielded) transactions
+#![allow(deprecated)] // Network type alias is deprecated, but Encoding trait requires it
+
 use t2z::*;
 use t2z::types::{Payment, TransactionRequest};
 
@@ -9,7 +11,7 @@ use common::fixtures::*;
 fn test_transparent_to_orchard_workflow() {
     // Generate a real unified address with Orchard receiver
     use orchard::keys::{SpendingKey, FullViewingKey};
-    use zcash_address::unified::{Address as UnifiedAddress, Container, Encoding};
+    use zcash_address::unified::{Address as UnifiedAddress, Encoding};
     use zcash_address::Network;
 
     // Create Orchard key

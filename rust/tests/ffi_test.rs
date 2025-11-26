@@ -51,7 +51,7 @@ fn test_transaction_request_lifecycle() {
 #[test]
 fn test_transaction_request_with_memo() {
     unsafe {
-        let address = CString::new(addresses::UNIFIED_ORCHARD).unwrap();
+        let address = CString::new(addresses::unified_orchard()).unwrap();
         let memo = CString::new("Test memo").unwrap();
         let label = CString::new("Alice").unwrap();
 
@@ -88,51 +88,6 @@ fn test_null_pointer_handling() {
         );
 
         assert_eq!(result, ResultCode::ErrorNullPointer);
-    }
-}
-
-#[test]
-#[ignore] // Ignored until propose_transaction is implemented
-fn test_propose_transaction_ffi() {
-    unsafe {
-        // Create payment and request
-        let address = CString::new(addresses::TRANSPARENT).unwrap();
-        let payment = CPayment {
-            address: address.as_ptr(),
-            amount: amounts::SMALL,
-            memo: ptr::null(),
-            label: ptr::null(),
-            message: ptr::null(),
-        };
-
-        let mut request: *mut TransactionRequestHandle = ptr::null_mut();
-        pczt_transaction_request_new(&payment, 1, &mut request);
-
-        // Create mock inputs
-        let input = CTransparentInput {
-            prevout_hash: [0u8; 32],
-            prevout_index: 0,
-            script_pub_key: ptr::null(),
-            script_pub_key_len: 0,
-            value: amounts::MEDIUM,
-        };
-
-        let mut pczt_out: *mut PcztHandle = ptr::null_mut();
-        let result = pczt_propose_transaction(
-            &input,
-            1,
-            request,
-            &mut pczt_out,
-        );
-
-        // Currently returns NotImplemented
-        assert!(result != ResultCode::Success || !pczt_out.is_null());
-
-        // Cleanup
-        if !pczt_out.is_null() {
-            pczt_free(pczt_out);
-        }
-        pczt_transaction_request_free(request);
     }
 }
 

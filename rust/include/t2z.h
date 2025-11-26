@@ -57,17 +57,6 @@ typedef struct TransactionRequestHandle {
 } TransactionRequestHandle;
 
 /**
- * C-compatible transaction input
- */
-typedef struct CTransparentInput {
-  uint8_t prevout_hash[32];
-  uint32_t prevout_index;
-  const unsigned char *script_pub_key;
-  uintptr_t script_pub_key_len;
-  uint64_t value;
-} CTransparentInput;
-
-/**
  * Opaque handle to a PCZT object
  */
 typedef struct PcztHandle {
@@ -112,16 +101,6 @@ void pczt_transaction_request_free(struct TransactionRequestHandle *aRequest)
 ;
 
 /**
- * Proposes a new transaction (DEPRECATED - use pczt_propose_transaction_v2)
- */
-
-enum ResultCode pczt_propose_transaction(const struct CTransparentInput *aInputs,
-                                         uintptr_t aNumInputs,
-                                         const struct TransactionRequestHandle *aRequest,
-                                         struct PcztHandle **aPcztOut)
-;
-
-/**
  * Sets the target height for a transaction request
  */
 
@@ -131,15 +110,13 @@ enum ResultCode pczt_transaction_request_set_target_height(struct TransactionReq
 
 /**
  * Proposes a new transaction using serialized input bytes
- *
- * This is the recommended FFI function that accepts inputs in the binary serialization format.
  */
 
-enum ResultCode pczt_propose_transaction_v2(const uint8_t *aInputsBytes,
-                                            uintptr_t aInputsBytesLen,
-                                            const struct TransactionRequestHandle *aRequest,
-                                            const char *aChangeAddress,
-                                            struct PcztHandle **aPcztOut)
+enum ResultCode pczt_propose_transaction(const uint8_t *aInputsBytes,
+                                         uintptr_t aInputsBytesLen,
+                                         const struct TransactionRequestHandle *aRequest,
+                                         const char *aChangeAddress,
+                                         struct PcztHandle **aPcztOut)
 ;
 
 /**

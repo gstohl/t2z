@@ -46,7 +46,7 @@ func ExampleProposeTransaction() {
 	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
 	pubKeyBytes := privKey.PubKey().SerializeCompressed()
 
-	scriptPubKeyHex := "1976a91479b000887626b294a914501a4cd226b58b23598388ac"
+	scriptPubKeyHex := "76a91479b000887626b294a914501a4cd226b58b23598388ac"
 	scriptPubKey, _ := hex.DecodeString(scriptPubKeyHex)
 
 	var txid [32]byte
@@ -86,7 +86,7 @@ func ExampleSerialize() {
 	}
 	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
 	pubKeyBytes := privKey.PubKey().SerializeCompressed()
-	scriptPubKey, _ := hex.DecodeString("1976a91479b000887626b294a914501a4cd226b58b23598388ac")
+	scriptPubKey, _ := hex.DecodeString("76a91479b000887626b294a914501a4cd226b58b23598388ac")
 
 	var txid [32]byte
 	inputs := []t2z.TransparentInput{
@@ -105,7 +105,7 @@ func ExampleSerialize() {
 	pczt.Free()
 
 	fmt.Printf("Serialized PCZT: %d bytes\n", len(pcztBytes))
-	// Output: Serialized PCZT: 364 bytes
+	// Output: Serialized PCZT: 365 bytes
 }
 
 // ExampleParse demonstrates parsing a serialized PCZT.
@@ -129,7 +129,7 @@ func ExampleParse() {
 		}
 		privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
 		pubKeyBytes := privKey.PubKey().SerializeCompressed()
-		scriptPubKey, _ := hex.DecodeString("1976a91479b000887626b294a914501a4cd226b58b23598388ac")
+		scriptPubKey, _ := hex.DecodeString("76a91479b000887626b294a914501a4cd226b58b23598388ac")
 
 		var txid [32]byte
 		inputs := []t2z.TransparentInput{
@@ -167,7 +167,7 @@ func ExampleGetSighash() {
 	}
 	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
 	pubKeyBytes := privKey.PubKey().SerializeCompressed()
-	scriptPubKey, _ := hex.DecodeString("1976a91479b000887626b294a914501a4cd226b58b23598388ac")
+	scriptPubKey, _ := hex.DecodeString("76a91479b000887626b294a914501a4cd226b58b23598388ac")
 
 	var txid [32]byte
 	inputs := []t2z.TransparentInput{

@@ -80,8 +80,8 @@ const pczt_transaction_request_set_target_height = lib.func(
   'uint32_t pczt_transaction_request_set_target_height(void* request, uint32_t target_height)'
 );
 
-const pczt_propose_transaction_v2 = lib.func(
-  'uint32_t pczt_propose_transaction_v2(const uint8_t* inputs_bytes, size_t inputs_bytes_len, const void* request, const char* change_address, _Out_ void** pczt_out)'
+const pczt_propose_transaction = lib.func(
+  'uint32_t pczt_propose_transaction(const uint8_t* inputs_bytes, size_t inputs_bytes_len, const void* request, const char* change_address, _Out_ void** pczt_out)'
 );
 
 const pczt_prove_transaction = lib.func('uint32_t pczt_prove_transaction(void* pczt, _Out_ void** pczt_out)');
@@ -334,7 +334,7 @@ export function proposeTransaction(inputs: TransparentInput[], request: Transact
   const inputBytes = serializeTransparentInputs(inputs);
   const handleOut: any[] = [null];
 
-  const code = pczt_propose_transaction_v2(
+  const code = pczt_propose_transaction(
     inputBytes,
     inputBytes.length,
     request.getHandle(),
@@ -357,7 +357,7 @@ export function proposeTransactionWithChange(
   const inputBytes = serializeTransparentInputs(inputs);
   const handleOut: any[] = [null];
 
-  const code = pczt_propose_transaction_v2(
+  const code = pczt_propose_transaction(
     inputBytes,
     inputBytes.length,
     request.getHandle(),

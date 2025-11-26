@@ -20,6 +20,7 @@ pub fn mock_verify_signature(_sighash: &[u8; 32], _signature: &[u8; 64]) -> bool
 }
 
 /// Creates a mock PCZT for testing (when we can't create a real one yet)
+#[cfg(feature = "mock-crypto")]
 pub fn create_mock_pczt() -> Result<Pczt, String> {
     // TODO: Create a minimal valid PCZT
     // For now, this is a placeholder
@@ -37,11 +38,11 @@ pub fn mock_get_sighash(_pczt: &Pczt, input_index: usize) -> Result<[u8; 32], Si
 }
 
 #[cfg(test)]
+#[cfg(feature = "mock-crypto")]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "mock-crypto")]
     fn test_mock_sighash() {
         // This test only runs when mock-crypto feature is enabled
         let sighash = mock_get_sighash(&create_mock_pczt().unwrap(), 0).unwrap();
@@ -50,7 +51,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "mock-crypto")]
     fn test_mock_signature_verification() {
         let sighash = [1u8; 32];
         let signature = [2u8; 64];

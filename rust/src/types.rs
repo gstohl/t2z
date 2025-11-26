@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use zcash_transparent::bundle::{OutPoint, TxOut};
 use zcash_transparent::address::Script;
 use zcash_protocol::value::Zatoshis;
+use zcash_address::{ZcashAddress, TryFromAddress, ConversionError, unified};
+use zcash_protocol::consensus::NetworkType;
 
 /// A signature hash used for signing transaction inputs
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,6 +16,20 @@ impl SigHash {
 
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
+    }
+}
+
+/// Wrapper for extracting unified address data
+pub struct UnifiedAddressWrapper(pub unified::Address);
+
+impl TryFromAddress for UnifiedAddressWrapper {
+    type Error = String;
+
+    fn try_from_unified(
+        _net: NetworkType,
+        data: unified::Address
+    ) -> Result<Self, ConversionError<Self::Error>> {
+        Ok(UnifiedAddressWrapper(data))
     }
 }
 
@@ -260,15 +276,18 @@ impl Payment {
 
     /// Check if this payment is to a transparent address
     pub fn is_transparent(&self) -> bool {
-        // Simple heuristic: transparent addresses start with 't'
-        // More robust parsing should be implemented
-        self.address.starts_with('t')
+        self.address.parse::<ZcashAddress>()
+            .ok()
+            .and_then(|addr| addr.convert::<zcash_transparent::address::TransparentAddress>().ok())
+            .is_some()
     }
 
     /// Check if this payment is to a unified address
     pub fn is_unified(&self) -> bool {
-        // Unified addresses start with 'u'
-        self.address.starts_with('u')
+        self.address.parse::<ZcashAddress>()
+            .ok()
+            .and_then(|addr| addr.convert::<UnifiedAddressWrapper>().ok())
+            .is_some()
     }
 }
 
@@ -276,11 +295,31 @@ impl Payment {
 mod tests {
     use super::*;
 
+    // Valid testnet transparent address
+    const TESTNET_TRANSPARENT: &str = "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma";
+
+    /// Generate a valid testnet unified address with Orchard receiver
+    #[allow(deprecated)] // Network type alias is deprecated, but Encoding trait requires it
+    fn generate_test_unified_address() -> String {
+        use orchard::keys::{SpendingKey, FullViewingKey};
+        use unified::{Address as UnifiedAddress, Encoding};
+        use zcash_address::Network;
+
+        let orchard_sk = SpendingKey::from_bytes([42u8; 32]).unwrap();
+        let orchard_fvk = FullViewingKey::from(&orchard_sk);
+        let orchard_addr = orchard_fvk.address_at(0u32, orchard::keys::Scope::External);
+
+        let items = vec![unified::Receiver::Orchard(orchard_addr.to_raw_address_bytes())];
+        let ua = UnifiedAddress::try_from_items(items).unwrap();
+        ua.encode(&Network::Test)
+    }
+
     #[test]
     fn test_transaction_request_total_amount() {
+        let unified_addr = generate_test_unified_address();
         let payments = vec![
-            Payment::new("t1address".to_string(), 1000),
-            Payment::new("u1address".to_string(), 2000),
+            Payment::new(TESTNET_TRANSPARENT.to_string(), 1000),
+            Payment::new(unified_addr, 2000),
         ];
         let request = TransactionRequest::new(payments);
         assert_eq!(request.total_amount(), 3000);
@@ -288,8 +327,10 @@ mod tests {
 
     #[test]
     fn test_payment_address_detection() {
-        let t_payment = Payment::new("t1transparent".to_string(), 1000);
-        let u_payment = Payment::new("u1unified".to_string(), 2000);
+        let unified_addr = generate_test_unified_address();
+
+        let t_payment = Payment::new(TESTNET_TRANSPARENT.to_string(), 1000);
+        let u_payment = Payment::new(unified_addr, 2000);
 
         assert!(t_payment.is_transparent());
         assert!(!t_payment.is_unified());

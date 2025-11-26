@@ -1,4 +1,7 @@
-/// Test fixtures for PCZT library testing
+//! Test fixtures for PCZT library testing
+#![allow(dead_code)]
+#![allow(deprecated)]
+
 use t2z::types::{Payment, TransactionRequest};
 
 /// Test Zcash addresses (testnet)
@@ -6,11 +9,23 @@ pub mod addresses {
     /// Transparent address (P2PKH testnet)
     pub const TRANSPARENT: &str = "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma";
 
-    /// Unified address with Orchard receiver (testnet example)
-    pub const UNIFIED_ORCHARD: &str = "u1test1234567890abcdefghijklmnopqrstuvwxyz";
-
     /// Another transparent address for testing multiple outputs
     pub const TRANSPARENT_2: &str = "tmBsTi2xWTjUdEXnuTceL7fecEQKeWi4vxA";
+
+    /// Generate a valid testnet unified address with Orchard receiver
+    pub fn unified_orchard() -> String {
+        use orchard::keys::{SpendingKey, FullViewingKey};
+        use zcash_address::unified::{Address as UnifiedAddress, Receiver, Encoding};
+        use zcash_address::Network;
+
+        let orchard_sk = SpendingKey::from_bytes([42u8; 32]).unwrap();
+        let orchard_fvk = FullViewingKey::from(&orchard_sk);
+        let orchard_addr = orchard_fvk.address_at(0u32, orchard::keys::Scope::External);
+
+        let items = vec![Receiver::Orchard(orchard_addr.to_raw_address_bytes())];
+        let ua = UnifiedAddress::try_from_items(items).unwrap();
+        ua.encode(&Network::Test)
+    }
 }
 
 /// Test amounts in zatoshis
@@ -39,7 +54,7 @@ pub fn simple_payment_request() -> TransactionRequest {
 
 /// Creates a payment request with a shielded output
 pub fn shielded_payment_request() -> TransactionRequest {
-    let payment = Payment::new(addresses::UNIFIED_ORCHARD.to_string(), amounts::MEDIUM);
+    let payment = Payment::new(addresses::unified_orchard(), amounts::MEDIUM);
     TransactionRequest::new(vec![payment])
 }
 
@@ -54,7 +69,7 @@ pub fn multi_payment_request() -> TransactionRequest {
 
 /// Creates a payment with memo
 pub fn payment_with_memo() -> Payment {
-    Payment::new(addresses::UNIFIED_ORCHARD.to_string(), amounts::SMALL)
+    Payment::new(addresses::unified_orchard(), amounts::SMALL)
         .with_memo("Test payment".to_string())
 }
 
@@ -123,7 +138,7 @@ pub fn create_test_pczt(
     };
     use zcash_address::{ZcashAddress, TryFromAddress, unified, unified::Container};
     use zcash_transparent::{address::TransparentAddress, bundle::OutPoint};
-    use pczt::{Pczt, roles::creator::Creator, roles::io_finalizer::IoFinalizer};
+    use pczt::roles::{creator::Creator, io_finalizer::IoFinalizer};
     use rand_core::OsRng;
 
     let params = TestNetwork;
@@ -233,7 +248,8 @@ mod tests {
         assert!(t_payment.is_transparent());
         assert!(!t_payment.is_unified());
 
-        let u_payment = Payment::new(addresses::UNIFIED_ORCHARD.to_string(), 1000);
+        let u_payment = Payment::new(addresses::unified_orchard(), 1000);
         assert!(u_payment.is_unified());
+        assert!(!u_payment.is_transparent());
     }
 }

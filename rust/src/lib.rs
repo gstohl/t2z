@@ -17,7 +17,6 @@ use zcash_protocol::{
 };
 use zcash_address::{ZcashAddress, unified};
 use zcash_transparent::address::TransparentAddress;
-use zcash_transparent::sighash::SighashType;
 use rand_core::OsRng;
 
 /// Proposes a transaction by creating a PCZT from transparent inputs and a transaction request.
@@ -101,22 +100,8 @@ pub fn propose_transaction(
             builder.add_transparent_output(&t_addr, amount)
                 .map_err(|e| ProposalError::PcztCreation(format!("Failed to add transparent output: {:?}", e)))?;
         } else {
-            // Try to handle as unified address with custom wrapper
-            use zcash_address::{TryFromAddress, ConversionError, unified::Container};
-            use zcash_protocol::consensus::NetworkType;
-
-            // Custom type to extract unified address
-            struct UnifiedAddressWrapper(unified::Address);
-            impl TryFromAddress for UnifiedAddressWrapper {
-                type Error = String;
-
-                fn try_from_unified(
-                    _net: NetworkType,
-                    data: unified::Address
-                ) -> Result<Self, ConversionError<Self::Error>> {
-                    Ok(UnifiedAddressWrapper(data))
-                }
-            }
+            // Try to handle as unified address
+            use zcash_address::unified::Container;
 
             let unified_wrapper = addr.convert::<UnifiedAddressWrapper>()
                 .map_err(|e| ProposalError::InvalidAddress(format!("Address must be transparent or unified with Orchard receiver: {:?}", e)))?;
@@ -265,6 +250,93 @@ pub fn prove_transaction(pczt: Pczt) -> Result<Pczt, ProverError> {
     }
 }
 
+// ============================================================================
+// Verification helper functions
+// ============================================================================
+
+/// Extracts raw script bytes from a Script, stripping the CompactSize prefix
+fn extract_raw_script(script: &zcash_transparent::address::Script) -> Option<Vec<u8>> {
+    let mut bytes = Vec::new();
+    script.write(&mut bytes).ok()?;
+    // Script::write() adds CompactSize prefix - skip it for raw comparison
+    // For scripts < 253 bytes, prefix is 1 byte
+    if !bytes.is_empty() && bytes[0] < 0xfd {
+        Some(bytes[1..].to_vec())
+    } else {
+        Some(bytes)
+    }
+}
+
+/// Checks if a PCZT output matches a TxOut (script and value)
+fn output_matches_txout(
+    pczt_output: &pczt::transparent::Output,
+    txout: &zcash_transparent::bundle::TxOut,
+) -> bool {
+    let Some(expected_raw) = extract_raw_script(txout.script_pubkey()) else {
+        return false;
+    };
+    pczt_output.script_pubkey().as_slice() == expected_raw.as_slice()
+        && *pczt_output.value() == txout.value().into_u64()
+}
+
+/// Checks if a PCZT output matches an address and amount
+fn output_matches_payment(
+    pczt_output: &pczt::transparent::Output,
+    addr: &zcash_transparent::address::TransparentAddress,
+    amount: u64,
+) -> bool {
+    let script: zcash_transparent::address::Script = addr.script().into();
+    let Some(expected_raw) = extract_raw_script(&script) else {
+        return false;
+    };
+    pczt_output.script_pubkey().as_slice() == expected_raw.as_slice()
+        && *pczt_output.value() == amount
+}
+
+/// Separates PCZT outputs into change outputs and payment outputs
+fn separate_change_outputs<'a>(
+    transparent_outputs: &'a [pczt::transparent::Output],
+    expected_change: &[zcash_transparent::bundle::TxOut],
+) -> Result<(usize, Vec<&'a pczt::transparent::Output>), VerificationFailure> {
+    let mut change_count = 0;
+    let mut payment_outputs = Vec::new();
+
+    for pczt_output in transparent_outputs {
+        let is_change = expected_change.iter()
+            .any(|expected| output_matches_txout(pczt_output, expected));
+
+        if is_change {
+            change_count += 1;
+        } else {
+            payment_outputs.push(pczt_output);
+        }
+    }
+
+    if change_count != expected_change.len() {
+        return Err(VerificationFailure::ChangeMismatch);
+    }
+
+    Ok((change_count, payment_outputs))
+}
+
+/// Verifies that a transparent payment exists in the outputs
+fn verify_transparent_payment(
+    payment_outputs: &[&pczt::transparent::Output],
+    addr: &zcash_transparent::address::TransparentAddress,
+    amount: u64,
+    address_str: &str,
+) -> Result<(), VerificationFailure> {
+    let found = payment_outputs.iter()
+        .any(|output| output_matches_payment(output, addr, amount));
+
+    if !found {
+        return Err(VerificationFailure::OutputMismatch(
+            format!("Payment to {} for {} zatoshis not found in PCZT outputs", address_str, amount)
+        ));
+    }
+    Ok(())
+}
+
 /// Verifies the PCZT before signing.
 ///
 /// If the entity that invoked propose_transaction is the same as the entity adding signatures,
@@ -287,161 +359,59 @@ pub fn verify_before_signing(
     transaction_request: &TransactionRequest,
     expected_change: &[zcash_transparent::bundle::TxOut],
 ) -> Result<(), VerificationFailure> {
-    use zcash_address::ZcashAddress;
-
     let transparent_outputs = pczt.transparent().outputs();
     let orchard_actions = pczt.orchard().actions();
-
-    // Count total outputs
-    let num_transparent_outputs = transparent_outputs.len();
     let num_orchard_outputs = orchard_actions.len();
-    let num_expected_change = expected_change.len();
     let num_payments = transaction_request.payments.len();
+    let total_outputs = transparent_outputs.len() + num_orchard_outputs;
 
-    // Total outputs should equal payments + change
-    let total_outputs = num_transparent_outputs + num_orchard_outputs;
-
-    // If expected_change is empty, we expect outputs to equal payments only
-    // Otherwise, verify total outputs = payments + change
-    if num_expected_change == 0 {
-        // No change expected - verify we have exactly the payment outputs
-        // (plus possibly internal change if the implementation added it)
-        // For now, just verify we have AT LEAST the payments
+    // Verify output counts
+    if expected_change.is_empty() {
         if total_outputs < num_payments {
             return Err(VerificationFailure::OutputMismatch(
                 format!("Expected at least {} payment outputs but found {}", num_payments, total_outputs)
             ));
         }
     } else {
-        // Change expected - verify exact count
-        let expected_total = num_payments + num_expected_change;
+        let expected_total = num_payments + expected_change.len();
         if total_outputs != expected_total {
             return Err(VerificationFailure::OutputMismatch(
-                format!(
-                    "Output count mismatch: {} outputs but expected {} payments + {} change = {}",
-                    total_outputs, num_payments, num_expected_change, expected_total
-                )
+                format!("Output count mismatch: {} outputs but expected {} payments + {} change = {}",
+                    total_outputs, num_payments, expected_change.len(), expected_total)
             ));
         }
     }
 
-    // Verify change outputs match expected (only if expected_change is provided)
-    // If expected_change is empty, we skip change verification
-    let pczt_payment_outputs = if num_expected_change > 0 {
-        // We need to match change outputs from the PCZT with expected_change
-        // For transparent change: compare scriptPubKey and value
-        let mut pczt_change_count = 0;
-        let mut payment_outputs = Vec::new();
-
-        // Separate PCZT transparent outputs into change vs payment
-        // Strategy: match against expected_change first
-        for pczt_output in transparent_outputs {
-            let mut is_change = false;
-            for expected in expected_change {
-                // Compare script and value
-                // pczt_output.script_pubkey() returns &Vec<u8>
-                // expected.script_pubkey() returns &Script
-                // We need to serialize expected script to compare
-                let mut expected_script_bytes = Vec::new();
-                if expected.script_pubkey().write(&mut expected_script_bytes).is_err() {
-                    continue;
-                }
-                // Script::write() adds CompactSize prefix, but pczt stores raw bytes
-                // Skip the prefix (first byte for scripts < 253 bytes)
-                let expected_script_raw = if expected_script_bytes.len() > 0 && expected_script_bytes[0] < 0xfd {
-                    &expected_script_bytes[1..]
-                } else {
-                    &expected_script_bytes[..]
-                };
-
-                let pczt_script = pczt_output.script_pubkey();
-
-                let scripts_match = pczt_script.as_slice() == expected_script_raw;
-                let values_match = *pczt_output.value() == expected.value().into_u64();
-
-                if scripts_match && values_match {
-                    is_change = true;
-                    pczt_change_count += 1;
-                    break;
-                }
-            }
-            if !is_change {
-                payment_outputs.push(pczt_output);
-            }
-        }
-
-        // Verify we found all expected change outputs
-        if pczt_change_count != expected_change.len() {
-            return Err(VerificationFailure::ChangeMismatch);
-        }
-
-        payment_outputs
+    // Separate change from payment outputs
+    let payment_outputs = if !expected_change.is_empty() {
+        let (_, payments) = separate_change_outputs(transparent_outputs, expected_change)?;
+        payments
     } else {
-        // No expected change - assume all transparent outputs are payments
         transparent_outputs.iter().collect()
     };
 
-    // Verify payment outputs match transaction request
-    // For transparent payments: parse address from script and compare amounts
+    // Verify each payment exists in outputs
     for payment in &transaction_request.payments {
         let addr = payment.address.parse::<ZcashAddress>()
             .map_err(|_| VerificationFailure::OutputMismatch(
                 format!("Invalid payment address: {}", payment.address)
             ))?;
 
-        // Check if this is a transparent address
-        if let Ok(t_addr) = addr.clone().convert::<zcash_transparent::address::TransparentAddress>() {
-            // Find matching transparent output
-            let found = pczt_payment_outputs.iter().any(|output| {
-                // Compare script and amount
-                let output_script = output.script_pubkey();
-                let expected_script: zcash_transparent::address::Script = t_addr.script().into();
-
-                // Serialize expected script for comparison
-                let mut expected_script_bytes = Vec::new();
-                if expected_script.write(&mut expected_script_bytes).is_err() {
-                    return false;
-                }
-                // Skip CompactSize prefix
-                let expected_script_raw = if expected_script_bytes.len() > 0 && expected_script_bytes[0] < 0xfd {
-                    &expected_script_bytes[1..]
-                } else {
-                    &expected_script_bytes[..]
-                };
-
-                let scripts_match = output_script.as_slice() == expected_script_raw;
-                let amounts_match = *output.value() == payment.amount;
-                scripts_match && amounts_match
-            });
-
-            if !found {
-                return Err(VerificationFailure::OutputMismatch(
-                    format!("Payment to {} for {} zatoshis not found in PCZT outputs",
-                        payment.address, payment.amount)
-                ));
-            }
-        } else {
-            // Shielded payment - verify Orchard action exists
-            // Note: We cannot verify exact amounts or addresses for shielded outputs
-            // as this data is encrypted. We can only verify the count.
-            if num_orchard_outputs == 0 {
-                return Err(VerificationFailure::OutputMismatch(
-                    "Shielded payment requested but no Orchard outputs found".to_string()
-                ));
-            }
+        if let Ok(t_addr) = addr.convert::<zcash_transparent::address::TransparentAddress>() {
+            verify_transparent_payment(&payment_outputs, &t_addr, payment.amount, &payment.address)?;
+        } else if num_orchard_outputs == 0 {
+            return Err(VerificationFailure::OutputMismatch(
+                "Shielded payment requested but no Orchard outputs found".to_string()
+            ));
         }
     }
 
-    // Verify fee is reasonable (not exceeding 1% of total input value)
-    // This is a sanity check to prevent excessive fees from malleation
-    // Note: We don't have access to input values here, so we use output total as proxy
-    let total_output_value: u64 = transparent_outputs.iter()
-        .map(|o| *o.value())
-        .sum();
-
+    // Verify fee is reasonable (max 1% of requested total)
+    let total_output_value: u64 = transparent_outputs.iter().map(|o| *o.value()).sum();
     let requested_total = transaction_request.total_amount();
+
     if total_output_value > 0 && requested_total > 0 {
-        let max_reasonable_fee = requested_total / 100; // 1% max
+        let max_reasonable_fee = requested_total / 100;
         if total_output_value + max_reasonable_fee < requested_total {
             return Err(VerificationFailure::InvalidFee);
         }
@@ -514,7 +484,7 @@ pub fn append_signature(
 
     // Create a Signer (which validates and parses the PCZT)
     let mut signer = Signer::new(pczt)
-        .map_err(|e| SignatureError::InvalidFormat)?;
+        .map_err(|_| SignatureError::InvalidFormat)?;
 
     // Parse the signature bytes into secp256k1::ecdsa::Signature
     let sig = secp256k1::ecdsa::Signature::from_compact(&signature)
@@ -624,17 +594,3 @@ pub fn serialize_pczt(pczt: &Pczt) -> Vec<u8> {
     pczt.serialize()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[ignore] // TODO: Implement proper PCZT creation for testing
-    fn test_parse_serialize_roundtrip() {
-        // Need to create a valid PCZT for this test
-        // let pczt = ...;
-        // let bytes = serialize_pczt(&pczt);
-        // let parsed = parse_pczt(&bytes);
-        // assert!(parsed.is_ok());
-    }
-}

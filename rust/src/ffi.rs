@@ -1,5 +1,5 @@
 use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_int, c_uchar};
+use std::os::raw::{c_char, c_uchar};
 use std::ptr;
 use std::slice;
 
@@ -50,16 +50,6 @@ pub struct CPayment {
     pub message: *const c_char,   // nullable
 }
 
-/// C-compatible transaction input
-#[repr(C)]
-pub struct CTransparentInput {
-    pub prevout_hash: [u8; 32],
-    pub prevout_index: u32,
-    pub script_pub_key: *const c_uchar,
-    pub script_pub_key_len: usize,
-    pub value: u64,
-}
-
 /// C-compatible transaction output
 #[repr(C)]
 pub struct CTransparentOutput {
@@ -67,9 +57,6 @@ pub struct CTransparentOutput {
     pub script_pub_key_len: usize,
     pub value: u64,
 }
-
-/// Error message buffer
-const ERROR_MSG_SIZE: usize = 512;
 
 thread_local! {
     static LAST_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
@@ -180,20 +167,6 @@ pub unsafe extern "C" fn pczt_transaction_request_free(request: *mut Transaction
     }
 }
 
-/// Proposes a new transaction (DEPRECATED - use pczt_propose_transaction_v2)
-#[no_mangle]
-pub unsafe extern "C" fn pczt_propose_transaction(
-    _inputs: *const CTransparentInput,
-    _num_inputs: usize,
-    _request: *const TransactionRequestHandle,
-    _pczt_out: *mut *mut PcztHandle,
-) -> ResultCode {
-    set_last_error(FfiError::NotImplemented(
-        "Use pczt_propose_transaction_v2 with serialized inputs instead".to_string()
-    ));
-    ResultCode::ErrorNotImplemented
-}
-
 /// Sets the target height for a transaction request
 #[no_mangle]
 pub unsafe extern "C" fn pczt_transaction_request_set_target_height(
@@ -211,10 +184,8 @@ pub unsafe extern "C" fn pczt_transaction_request_set_target_height(
 }
 
 /// Proposes a new transaction using serialized input bytes
-///
-/// This is the recommended FFI function that accepts inputs in the binary serialization format.
 #[no_mangle]
-pub unsafe extern "C" fn pczt_propose_transaction_v2(
+pub unsafe extern "C" fn pczt_propose_transaction(
     inputs_bytes: *const u8,
     inputs_bytes_len: usize,
     request: *const TransactionRequestHandle,

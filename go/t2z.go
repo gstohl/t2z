@@ -345,7 +345,7 @@ func ProposeTransactionWithChange(inputs []TransparentInput, request *Transactio
 	}
 
 	var pcztHandle *C.PcztHandle
-	code := C.pczt_propose_transaction_v2(
+	code := C.pczt_propose_transaction(
 		(*C.uint8_t)(unsafe.Pointer(&inputBytes[0])),
 		C.size_t(len(inputBytes)),
 		request.handle,
@@ -619,18 +619,29 @@ func VerifyBeforeSigning(pczt *PCZT, request *TransactionRequest, expectedChange
 		return errors.New("invalid transaction request")
 	}
 
-	// Convert expectedChange to C array
-	var cOutputs []C.CTransparentOutput
-	for _, output := range expectedChange {
-		cOutput := C.CTransparentOutput{
-			value: C.uint64_t(output.Value),
-		}
+	// Convert expectedChange to C array, copying script data to C memory
+	// to avoid CGO pointer rules violation
+	cOutputs := make([]C.CTransparentOutput, len(expectedChange))
+	scriptPtrs := make([]unsafe.Pointer, len(expectedChange)) // Track for cleanup
+
+	for i, output := range expectedChange {
+		cOutputs[i].value = C.uint64_t(output.Value)
 		if len(output.ScriptPubKey) > 0 {
-			cOutput.script_pub_key = (*C.uchar)(unsafe.Pointer(&output.ScriptPubKey[0]))
-			cOutput.script_pub_key_len = C.uintptr_t(len(output.ScriptPubKey))
+			// Copy to C memory to avoid "Go pointer to Go pointer" issue
+			scriptPtrs[i] = C.CBytes(output.ScriptPubKey)
+			cOutputs[i].script_pub_key = (*C.uchar)(scriptPtrs[i])
+			cOutputs[i].script_pub_key_len = C.uintptr_t(len(output.ScriptPubKey))
 		}
-		cOutputs = append(cOutputs, cOutput)
 	}
+
+	// Ensure cleanup of C-allocated memory
+	defer func() {
+		for _, ptr := range scriptPtrs {
+			if ptr != nil {
+				C.free(ptr)
+			}
+		}
+	}()
 
 	var cOutputsPtr *C.CTransparentOutput
 	if len(cOutputs) > 0 {

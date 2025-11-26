@@ -71,7 +71,7 @@ fn test_verify_before_signing_insufficient_outputs() {
     // Current implementation allows >= payments, so this won't fail
     // This test documents current behavior
     let different_request = multi_payment_request();
-    let result = verify_before_signing(&proved, &different_request, &[]);
+    let _result = verify_before_signing(&proved, &different_request, &[]);
 
     // Note: Basic implementation may accept this (documented limitation)
     println!("✅ verify_before_signing() basic verification completed (may not catch all mismatches)");
