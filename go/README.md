@@ -93,11 +93,13 @@ type TransparentInput struct {
 
 ## Memory
 
-Most functions **consume** the input PCZT (ownership transfer):
-- `ProveTransaction`, `AppendSignature`, `FinalizeAndExtract` - consume input
+**Automatic cleanup**: All handles are automatically freed by the garbage collector via `runtime.SetFinalizer`. No manual cleanup required.
 
-These do **not** consume:
-- `GetSighash`, `Serialize`, `VerifyBeforeSigning` - read-only
+Consuming functions transfer ownership (input PCZT becomes invalid):
+- `ProveTransaction`, `AppendSignature`, `FinalizeAndExtract`, `Combine`
+
+Non-consuming (read-only):
+- `GetSighash`, `Serialize`, `VerifyBeforeSigning`
 
 ## License
 

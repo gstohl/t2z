@@ -272,13 +272,35 @@ type PCZT struct {
 	handle *C.PcztHandle
 }
 
-// Free explicitly frees the PCZT handle
+// newPCZT creates a new PCZT with automatic cleanup via finalizer
+func newPCZT(handle *C.PcztHandle) *PCZT {
+	p := &PCZT{handle: handle}
+	runtime.SetFinalizer(p, func(pczt *PCZT) {
+		if pczt.handle != nil {
+			C.pczt_free(pczt.handle)
+		}
+	})
+	return p
+}
+
+// Free explicitly frees the PCZT handle (optional - GC will handle automatically)
 func (p *PCZT) Free() {
 	if p.handle != nil {
 		runtime.SetFinalizer(p, nil) // Clear finalizer to prevent double-free
 		C.pczt_free(p.handle)
 		p.handle = nil
 	}
+}
+
+// consumeHandle returns the handle and clears it (transfers ownership)
+func (p *PCZT) consumeHandle() *C.PcztHandle {
+	if p.handle == nil {
+		return nil
+	}
+	runtime.SetFinalizer(p, nil) // Clear finalizer - ownership transferred
+	h := p.handle
+	p.handle = nil
+	return h
 }
 
 // ProposeTransaction creates a PCZT from transparent inputs and a transaction request.
@@ -335,9 +357,7 @@ func ProposeTransactionWithChange(inputs []TransparentInput, request *Transactio
 		return nil, wrapError(ResultCode(code))
 	}
 
-	result := &PCZT{handle: pcztHandle}
-	// Note: No finalizer - caller must Free() if not consumed by another function
-	return result, nil
+	return newPCZT(pcztHandle), nil
 }
 
 // ProveTransaction adds Orchard proofs to a PCZT.
@@ -352,16 +372,17 @@ func ProveTransaction(pczt *PCZT) (*PCZT, error) {
 		return nil, errors.New("invalid PCZT")
 	}
 
+	// Consume input PCZT (transfers ownership to Rust)
+	handle := pczt.consumeHandle()
+
 	var outHandle *C.PcztHandle
-	code := C.pczt_prove_transaction(pczt.handle, &outHandle)
+	code := C.pczt_prove_transaction(handle, &outHandle)
 
 	if code != C.SUCCESS {
 		return nil, wrapError(ResultCode(code))
 	}
 
-	result := &PCZT{handle: outHandle}
-	// Note: No finalizer - caller must Free() if not consumed by another function
-	return result, nil
+	return newPCZT(outHandle), nil
 }
 
 // GetSighash gets the signature hash for a transparent input.
@@ -412,9 +433,12 @@ func AppendSignature(pczt *PCZT, inputIndex uint, signature [64]byte) (*PCZT, er
 		return nil, errors.New("invalid PCZT")
 	}
 
+	// Consume input PCZT (transfers ownership to Rust)
+	handle := pczt.consumeHandle()
+
 	var outHandle *C.PcztHandle
 	code := C.pczt_append_signature(
-		pczt.handle,
+		handle,
 		C.size_t(inputIndex),
 		(*[64]C.uint8_t)(unsafe.Pointer(&signature[0])),
 		&outHandle,
@@ -424,9 +448,7 @@ func AppendSignature(pczt *PCZT, inputIndex uint, signature [64]byte) (*PCZT, er
 		return nil, wrapError(ResultCode(code))
 	}
 
-	result := &PCZT{handle: outHandle}
-	// Note: No finalizer - caller must Free() if not consumed by another function
-	return result, nil
+	return newPCZT(outHandle), nil
 }
 
 // FinalizeAndExtract finalizes the PCZT and extracts the transaction bytes.
@@ -442,11 +464,14 @@ func FinalizeAndExtract(pczt *PCZT) ([]byte, error) {
 		return nil, errors.New("invalid PCZT")
 	}
 
+	// Consume input PCZT (transfers ownership to Rust)
+	handle := pczt.consumeHandle()
+
 	var txBytes *C.uint8_t
 	var txBytesLen C.size_t
 
 	code := C.pczt_finalize_and_extract(
-		pczt.handle,
+		handle,
 		&txBytes,
 		&txBytesLen,
 	)
@@ -486,12 +511,7 @@ func Parse(pcztBytes []byte) (*PCZT, error) {
 		return nil, wrapError(ResultCode(code))
 	}
 
-	result := &PCZT{handle: handle}
-	runtime.SetFinalizer(result, func(p *PCZT) {
-		p.Free()
-	})
-
-	return result, nil
+	return newPCZT(handle), nil
 }
 
 // Serialize serializes a PCZT to bytes.
@@ -550,11 +570,10 @@ func Combine(pczts []*PCZT) (*PCZT, error) {
 		}
 	}
 
-	// Build array of handles
+	// Consume all input PCZTs (transfers ownership to Rust)
 	handles := make([]*C.PcztHandle, len(pczts))
 	for i, pczt := range pczts {
-		handles[i] = pczt.handle
-		pczt.handle = nil // Transfer ownership
+		handles[i] = pczt.consumeHandle()
 	}
 
 	var outHandle *C.PcztHandle
@@ -568,8 +587,7 @@ func Combine(pczts []*PCZT) (*PCZT, error) {
 		return nil, wrapError(ResultCode(code))
 	}
 
-	result := &PCZT{handle: outHandle}
-	return result, nil
+	return newPCZT(outHandle), nil
 }
 
 // TransparentOutput represents a transparent transaction output.

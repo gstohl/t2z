@@ -54,8 +54,6 @@ const signed = appendSignature(proved, 0, signature);
 // 5. Finalize and broadcast
 const txBytes = finalizeAndExtract(signed);
 // submit txBytes to zcashd/lightwalletd
-
-request.free();
 ```
 
 ## API
@@ -93,13 +91,13 @@ interface TransparentInput {
 
 ## Memory
 
-Most functions **consume** the input PCZT (ownership transfer):
-- `proveTransaction`, `appendSignature`, `finalizeAndExtract` - consume input
+**Automatic cleanup**: All handles are automatically freed by the garbage collector via `FinalizationRegistry`. No manual cleanup required.
 
-These do **not** consume:
-- `getSighash`, `serialize`, `verifyBeforeSigning` - read-only
+Consuming functions transfer ownership (input PCZT becomes invalid):
+- `proveTransaction`, `appendSignature`, `finalizeAndExtract`, `combine`
 
-Call `request.free()` when done with TransactionRequest.
+Non-consuming (read-only):
+- `getSighash`, `serialize`, `verifyBeforeSigning`
 
 ## License
 

@@ -162,6 +162,19 @@ export interface TransparentOutput {
   value: string; // BigInt as string
 }
 
+// FinalizationRegistry for automatic cleanup when objects are garbage collected
+const requestRegistry = new FinalizationRegistry((handle: any) => {
+  if (handle) {
+    pczt_transaction_request_free(handle);
+  }
+});
+
+const pcztRegistry = new FinalizationRegistry((handle: any) => {
+  if (handle) {
+    pczt_free(handle);
+  }
+});
+
 /**
  * Transaction request containing multiple payments
  */
@@ -190,6 +203,9 @@ export class TransactionRequest {
     );
     checkResult(code, 'Create transaction request');
     this.handle = handleOut[0];
+
+    // Register for automatic cleanup on GC
+    requestRegistry.register(this, this.handle, this);
   }
 
   /**
@@ -202,10 +218,11 @@ export class TransactionRequest {
   }
 
   /**
-   * Free the native resources
+   * Explicitly free native resources (optional - GC will handle automatically)
    */
   free(): void {
     if (!this.freed && this.handle) {
+      requestRegistry.unregister(this);
       pczt_transaction_request_free(this.handle);
       this.handle = null;
       this.freed = true;
@@ -229,13 +246,16 @@ export class PCZT {
   /** @internal */
   constructor(handle: any) {
     this.handle = handle;
+    // Register for automatic cleanup on GC
+    pcztRegistry.register(this, this.handle, this);
   }
 
   /**
-   * Free the native resources
+   * Explicitly free native resources (optional - GC will handle automatically)
    */
   free(): void {
     if (!this.freed && this.handle) {
+      pcztRegistry.unregister(this);
       pczt_free(this.handle);
       this.handle = null;
       this.freed = true;
@@ -251,6 +271,7 @@ export class PCZT {
   /** @internal */
   takeHandle(): any {
     if (this.freed) throw new Error('PCZT already freed');
+    pcztRegistry.unregister(this); // Ownership transferred, don't auto-free
     const h = this.handle;
     this.handle = null;
     this.freed = true;
