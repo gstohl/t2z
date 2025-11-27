@@ -1,0 +1,31 @@
+# Zebra Regtest Infrastructure
+# Usage:
+#   docker-compose up -d          # Start Zebra with internal miner
+#   docker-compose logs -f        # Watch logs for mining activity
+#   docker-compose down -v        # Stop and clean up
+#
+# Once running, Zebra RPC is available at localhost:18232
+
+services:
+  zebra:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zebra-regtest
+    platform: linux/amd64
+    ports:
+      - "18232:18232"  # RPC port
+      - "18344:18344"  # P2P port
+    volumes:
+      - zebra-data:/home/zebra/.cache/zebra
+      - ./zebra-regtest.toml:/etc/zebrad/zebra.toml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-X", "POST", "-H", "Content-Type: application/json", "-d", "{\"jsonrpc\":\"2.0\",\"method\":\"getblockchaininfo\",\"params\":[],\"id\":1}", "http://localhost:18232"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
+
+volumes:
+  zebra-data:

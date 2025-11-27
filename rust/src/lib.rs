@@ -11,7 +11,7 @@ use zcash_primitives::transaction::{
     fees::zip317::FeeRule,
 };
 use zcash_protocol::{
-    consensus::TestNetwork,
+    consensus::{MainNetwork, TestNetwork, Parameters},
     value::Zatoshis,
     memo::MemoBytes,
 };
@@ -53,14 +53,28 @@ pub fn propose_transaction(
         return Err(ProposalError::InvalidRequest("No payments provided".to_string()));
     }
 
-    // Use testnet parameters
-    let params = TestNetwork;
-    // Use provided target_height or default to current testnet height
-    // Note: Transactions expire 40 blocks after target_height (~100 minutes on testnet)
-    // Update this value periodically or implement dynamic height from lightwalletd
-    let target_height = transaction_request.target_height.unwrap_or(3_693_760).into();
+    // Select network parameters based on request
+    // For regtest, use mainnet parameters (regtest uses mainnet branch IDs)
+    // For testnet, use testnet parameters
+    if transaction_request.use_mainnet {
+        propose_transaction_with_network(inputs_to_spend, transaction_request, change_address, MainNetwork)
+    } else {
+        propose_transaction_with_network(inputs_to_spend, transaction_request, change_address, TestNetwork)
+    }
+}
 
-    // Create transaction builder with orchard anchor for shielded outputs
+/// Internal helper that creates a transaction with specific network parameters
+fn propose_transaction_with_network<P: Parameters>(
+    inputs_to_spend: &[u8],
+    transaction_request: TransactionRequest,
+    change_address: Option<String>,
+    params: P,
+) -> Result<Pczt, ProposalError> {
+    // Default target heights: mainnet ~2.5M, testnet ~3.7M (both post-NU5)
+    let default_height = if transaction_request.use_mainnet { 2_500_000 } else { 3_693_760 };
+    let target_height = transaction_request.target_height.unwrap_or(default_height).into();
+
+    // Create transaction builder
     let mut builder = Builder::new(
         params,
         target_height,
@@ -147,10 +161,32 @@ pub fn propose_transaction(
 
     // Estimate fee based on ZIP 317 standard
     // The Builder calculates actual fees dynamically, so our estimate must match
-    // Transparent-only: ~10,000 zatoshis
-    // Transparent->shielded (Orchard): ~15,000 zatoshis (higher due to shielded actions)
+    // ZIP 317: fee = 5000 * (transparent_actions + orchard_actions)
+    // where orchard_actions are padded to even numbers
     let has_shielded = transaction_request.has_shielded_outputs();
-    let estimated_fee: u64 = if has_shielded { 15_000 } else { 10_000 };
+    let num_inputs = inputs.len();
+    let estimated_fee: u64 = if has_shielded {
+        // Count Orchard outputs
+        let num_orchard_outputs = transaction_request.payments.iter()
+            .filter(|p| p.is_unified())
+            .count();
+        // Orchard actions are padded to even numbers
+        let orchard_actions = ((num_orchard_outputs + 1) / 2) * 2;
+        // Count transparent payment outputs (non-unified addresses) + 1 for change
+        let num_transparent_payment_outputs = transaction_request.payments.iter()
+            .filter(|p| !p.is_unified())
+            .count();
+        let transparent_outputs = num_transparent_payment_outputs + 1; // +1 for change
+        let transparent_actions = std::cmp::max(num_inputs, transparent_outputs);
+        // Total fee
+        5_000 * (transparent_actions + orchard_actions) as u64
+    } else {
+        // Transparent-only: fee based on inputs and outputs
+        let num_payment_outputs = transaction_request.payments.len();
+        let num_outputs = num_payment_outputs + 1; // +1 for change
+        let logical_actions = std::cmp::max(num_inputs, num_outputs);
+        5_000 * logical_actions as u64
+    };
 
     // If we have change (inputs > outputs + fee), add a change output
     if total_input > total_output + estimated_fee {
@@ -406,14 +442,19 @@ pub fn verify_before_signing(
         }
     }
 
-    // Verify fee is reasonable (max 1% of requested total)
-    let total_output_value: u64 = transparent_outputs.iter().map(|o| *o.value()).sum();
-    let requested_total = transaction_request.total_amount();
+    // Verify fee is reasonable
+    // For transparent-only transactions: fee should not exceed 1% of total
+    // For shielded transactions: we skip this check since Orchard amounts are hidden
+    let has_orchard = num_orchard_outputs > 0;
+    if !has_orchard {
+        let total_output_value: u64 = transparent_outputs.iter().map(|o| *o.value()).sum();
+        let requested_total = transaction_request.total_amount();
 
-    if total_output_value > 0 && requested_total > 0 {
-        let max_reasonable_fee = requested_total / 100;
-        if total_output_value + max_reasonable_fee < requested_total {
-            return Err(VerificationFailure::InvalidFee);
+        if total_output_value > 0 && requested_total > 0 {
+            let max_reasonable_fee = requested_total / 100;
+            if total_output_value + max_reasonable_fee < requested_total {
+                return Err(VerificationFailure::InvalidFee);
+            }
         }
     }
 

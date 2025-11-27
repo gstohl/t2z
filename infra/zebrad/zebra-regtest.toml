@@ -1,0 +1,45 @@
+# Zebra Regtest Configuration with Internal Miner
+# Based on https://zebra.zfnd.org/user/regtest.html
+
+[network]
+network = "Regtest"
+listen_addr = "0.0.0.0:18344"
+
+# No peers - isolated regtest network
+initial_mainnet_peers = []
+initial_testnet_peers = []
+
+# NU5 active from block 1 (block 0 is Genesis)
+[network.testnet_parameters.activation_heights]
+NU5 = 1
+
+[state]
+cache_dir = "/home/zebra/.cache/zebra"
+ephemeral = false
+
+[rpc]
+listen_addr = "0.0.0.0:18232"
+parallel_cpu_threads = 1
+enable_cookie_auth = false
+debug_force_finished_sync = true
+
+[mining]
+# Test address - replace with your own for production use
+# This is the TEST_KEYPAIR address from typescript examples (we have the private key)
+miner_address = "tmEUfekwCArJoFTMEL2kFwQyrsDMCNX5ZFf"
+# Enable internal miner for regtest (auto-mines blocks every ~30 seconds)
+internal_miner = true
+
+[consensus]
+checkpoint_sync = false
+
+[mempool]
+eviction_memory_time = "1h"
+tx_cost_limit = 80000000
+
+[tracing]
+use_color = false
+use_journald = false
+
+[sync]
+parallel_cpu_threads = 1

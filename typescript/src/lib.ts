@@ -80,6 +80,10 @@ const pczt_transaction_request_set_target_height = lib.func(
   'uint32_t pczt_transaction_request_set_target_height(void* request, uint32_t target_height)'
 );
 
+const pczt_transaction_request_set_use_mainnet = lib.func(
+  'uint32_t pczt_transaction_request_set_use_mainnet(void* request, bool use_mainnet)'
+);
+
 const pczt_propose_transaction = lib.func(
   'uint32_t pczt_propose_transaction(const uint8_t* inputs_bytes, size_t inputs_bytes_len, const void* request, const char* change_address, _Out_ void** pczt_out)'
 );
@@ -215,6 +219,19 @@ export class TransactionRequest {
     if (this.freed) throw new Error('TransactionRequest already freed');
     const code = pczt_transaction_request_set_target_height(this.handle, height);
     checkResult(code, 'Set target height');
+  }
+
+  /**
+   * Set whether to use mainnet parameters for consensus branch ID
+   *
+   * By default, the library uses testnet parameters. Set this to true
+   * for mainnet or for regtest networks that use mainnet-like branch IDs
+   * (like Zebra's regtest mode).
+   */
+  setUseMainnet(useMainnet: boolean): void {
+    if (this.freed) throw new Error('TransactionRequest already freed');
+    const code = pczt_transaction_request_set_use_mainnet(this.handle, useMainnet);
+    checkResult(code, 'Set use mainnet');
   }
 
   /**

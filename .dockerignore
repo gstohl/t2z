@@ -1,0 +1,16 @@
+# Rust build artifacts (will rebuild in container)
+rust/target
+
+# Node modules (will reinstall in container)
+**/node_modules
+**/dist
+
+# Git
+.git
+
+# Local/private files
+**/*.local.md
+**/test-addresses.json
+
+# OS files
+.DS_Store

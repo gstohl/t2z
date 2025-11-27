@@ -2,9 +2,56 @@
  * Utility functions for t2z examples
  */
 
-import { createHash, createECDH } from 'crypto';
-import { ZcashdClient, UTXO } from './zcashd-client.js';
+import * as bitcoin from 'bitcoinjs-lib';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { ZebraClient, UTXO } from './zebra-client.js';
+import { ZcashKeypair, signDER, bytesToHex } from './keys.js';
 import { TransparentInput } from 't2z';
+
+// Spent UTXO tracking file location
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SPENT_UTXOS_FILE = path.join(__dirname, '..', 'data', 'spent-utxos.json');
+
+/**
+ * Load spent UTXOs from file
+ */
+async function loadSpentUtxos(): Promise<Set<string>> {
+  try {
+    const data = await fs.readFile(SPENT_UTXOS_FILE, 'utf-8');
+    const arr = JSON.parse(data);
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Save spent UTXOs to file
+ */
+async function saveSpentUtxos(spent: Set<string>): Promise<void> {
+  await fs.writeFile(SPENT_UTXOS_FILE, JSON.stringify([...spent], null, 2));
+}
+
+/**
+ * Mark UTXOs as spent (call after successful broadcast)
+ */
+export async function markUtxosSpent(inputs: TransparentInput[]): Promise<void> {
+  const spent = await loadSpentUtxos();
+  for (const input of inputs) {
+    const key = `${input.txid.toString('hex')}:${input.vout}`;
+    spent.add(key);
+  }
+  await saveSpentUtxos(spent);
+}
+
+/**
+ * Clear spent UTXOs tracking (call on setup)
+ */
+export async function clearSpentUtxos(): Promise<void> {
+  await saveSpentUtxos(new Set());
+}
 
 /**
  * Convert zatoshis to ZEC
@@ -28,156 +75,229 @@ export function reverseHex(hex: string): string {
 }
 
 /**
- * Get compressed public key from zcashd address
- * This extracts the pubkey from the address using zcashd's validateaddress RPC
+ * Sign a sighash with a keypair
+ * Returns DER-encoded signature suitable for t2z append_signature
  */
-export async function getCompressedPubKey(
-  client: ZcashdClient,
-  address: string
-): Promise<Buffer> {
-  const addrInfo = await client.validateAddress(address);
-
-  if (!addrInfo.pubkey) {
-    throw new Error(`No pubkey available for address ${address}`);
-  }
-
-  const pubkeyHex = addrInfo.pubkey;
-
-  // If it's already compressed (33 bytes = 66 hex chars), return it
-  if (pubkeyHex.length === 66) {
-    return Buffer.from(pubkeyHex, 'hex');
-  }
-
-  // If it's uncompressed (65 bytes), compress it
-  if (pubkeyHex.length === 130) {
-    const uncompressed = Buffer.from(pubkeyHex, 'hex');
-    const x = uncompressed.slice(1, 33);
-    const y = uncompressed.slice(33, 65);
-
-    // Determine prefix: 02 if y is even, 03 if y is odd
-    const prefix = y[y.length - 1] % 2 === 0 ? 0x02 : 0x03;
-
-    return Buffer.concat([Buffer.from([prefix]), x]);
-  }
-
-  throw new Error(`Unexpected pubkey format: ${pubkeyHex}`);
+export function signSighash(sighash: Buffer, keypair: ZcashKeypair): Buffer {
+  return signDER(sighash, keypair);
 }
 
 /**
- * Sign a message using zcashd's signmessage
- * Note: This is for demo purposes. In production, use proper secp256k1 signing
+ * Convert UTXO from RPC to TransparentInput format
  */
-export async function signWithZcashd(
-  client: ZcashdClient,
-  address: string,
-  message: Buffer
-): Promise<Buffer> {
-  // For zcashd, we need to use signrawtransaction or external signing
-  // This is a placeholder - in real scenarios, we'd use the private key directly
-  throw new Error('Signing via zcashd requires using private keys directly');
-}
-
-/**
- * Get private key from zcashd and sign message using secp256k1
- */
-export async function getPrivateKeyAndSign(
-  client: ZcashdClient,
-  address: string,
-  sighash: Buffer
-): Promise<Buffer> {
-  const privKeyWIF = await client.dumpPrivKey(address);
-
-  // Decode WIF private key
-  const privKeyBytes = decodeWIF(privKeyWIF);
-
-  // Sign using secp256k1 (we'll use native crypto for this example)
-  const signature = signSecp256k1(privKeyBytes, sighash);
-
-  return signature;
-}
-
-/**
- * Decode WIF (Wallet Import Format) private key
- */
-function decodeWIF(wif: string): Buffer {
-  // Simple base58 decode (for regtest, keys start with 'c')
-  // In production, use a proper base58 library
-  const decoded = Buffer.from(bs58Decode(wif));
-
-  // Remove checksum (last 4 bytes) and version byte (first byte)
-  const privKey = decoded.slice(1, 33);
-
-  return privKey;
-}
-
-/**
- * Simple base58 decode
- * Note: This is a simplified version. In production, use a proper library like 'bs58'
- */
-function bs58Decode(str: string): number[] {
-  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  const ALPHABET_MAP: { [key: string]: number } = {};
-  for (let i = 0; i < ALPHABET.length; i++) {
-    ALPHABET_MAP[ALPHABET[i]] = i;
-  }
-
-  let result = BigInt(0);
-  for (let i = 0; i < str.length; i++) {
-    result = result * BigInt(58) + BigInt(ALPHABET_MAP[str[i]]);
-  }
-
-  const hex = result.toString(16);
-  const bytes: number[] = [];
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.slice(i, i + 2), 16));
-  }
-
-  return bytes;
-}
-
-/**
- * Sign message with secp256k1 private key
- * Returns 64-byte signature (r || s)
- */
-function signSecp256k1(privKey: Buffer, message: Buffer): Buffer {
-  // For this example, we'll use Node's crypto with ECDH
-  // In production, use a proper secp256k1 library like 'secp256k1' npm package
-  const ecdh = createECDH('secp256k1');
-  ecdh.setPrivateKey(privKey);
-
-  // This is a simplified version - real signing is more complex
-  // For proper implementation, you'd use a library like 'secp256k1' or '@noble/secp256k1'
-  throw new Error(
-    'For proper secp256k1 signing, use the signMessage function from t2z library or a dedicated secp256k1 library'
-  );
-}
-
-/**
- * Convert UTXO to TransparentInput
- */
-export async function utxoToTransparentInput(
-  client: ZcashdClient,
-  utxo: UTXO
-): Promise<TransparentInput> {
-  // Get compressed pubkey
-  const pubkey = await getCompressedPubKey(client, utxo.address);
-
-  // Get script pubkey from the UTXO
-  const scriptPubKey = Buffer.from(utxo.scriptPubKey, 'hex');
-
+export function utxoToTransparentInput(
+  utxo: UTXO,
+  keypair: ZcashKeypair
+): TransparentInput {
   // txid needs to be in little-endian (reversed)
   const txid = Buffer.from(reverseHex(utxo.txid), 'hex');
 
-  // Convert amount from BTC to zatoshis
-  const amount = zecToZatoshi(utxo.amount);
+  // Get script pubkey from UTXO or derive from pubkey
+  let scriptPubKey: Buffer;
+  if (utxo.scriptPubKey) {
+    scriptPubKey = Buffer.from(utxo.scriptPubKey, 'hex');
+  } else {
+    // Derive P2PKH script: OP_DUP OP_HASH160 <pubkeyhash> OP_EQUALVERIFY OP_CHECKSIG
+    const pubkeyHash = bitcoin.crypto.hash160(keypair.publicKey);
+    scriptPubKey = Buffer.concat([
+      Buffer.from([0x76, 0xa9, 0x14]), // OP_DUP OP_HASH160 PUSH20
+      pubkeyHash,
+      Buffer.from([0x88, 0xac]), // OP_EQUALVERIFY OP_CHECKSIG
+    ]);
+  }
 
   return {
-    pubkey,
+    pubkey: keypair.publicKey,
     txid,
     vout: utxo.vout,
-    amount,
+    amount: BigInt(utxo.amount), // amount in zatoshis
     scriptPubKey,
   };
+}
+
+/**
+ * Parse a Zcash transaction hex to extract outputs
+ * Note: This is a simplified parser for coinbase transactions
+ */
+function parseTxOutputs(txHex: string): Array<{ value: bigint; scriptPubKey: Buffer }> {
+  const tx = Buffer.from(txHex, 'hex');
+  let offset = 0;
+
+  // Skip header (4 bytes version + 4 bytes version group id)
+  offset += 8;
+
+  // Read vin count (varint)
+  const vinCount = tx[offset];
+  offset += 1;
+
+  // Skip all inputs (for coinbase there's 1 input with fixed structure)
+  for (let i = 0; i < vinCount; i++) {
+    offset += 32; // prev txid
+    offset += 4; // prev vout
+    const scriptLen = tx[offset];
+    offset += 1 + scriptLen; // script length + script
+    offset += 4; // sequence
+  }
+
+  // Read vout count (varint)
+  const voutCount = tx[offset];
+  offset += 1;
+
+  const outputs: Array<{ value: bigint; scriptPubKey: Buffer }> = [];
+
+  for (let i = 0; i < voutCount; i++) {
+    // Read value (8 bytes, little-endian)
+    const value = tx.readBigUInt64LE(offset);
+    offset += 8;
+
+    // Read script length (varint) and script
+    const scriptLen = tx[offset];
+    offset += 1;
+    const scriptPubKey = tx.slice(offset, offset + scriptLen);
+    offset += scriptLen;
+
+    outputs.push({ value, scriptPubKey: Buffer.from(scriptPubKey) });
+  }
+
+  return outputs;
+}
+
+/**
+ * Compute txid from raw transaction hex
+ * txid = double SHA256 of tx bytes (reversed for display)
+ */
+function computeTxid(txHex: string): string {
+  const tx = Buffer.from(txHex, 'hex');
+  const hash = bitcoin.crypto.hash256(tx);
+  return hash.reverse().toString('hex');
+}
+
+/**
+ * Create a TransparentInput from coinbase transaction
+ * (Coinbase outputs have a specific structure)
+ */
+export async function getCoinbaseUtxo(
+  client: ZebraClient,
+  blockHeight: number,
+  keypair: ZcashKeypair
+): Promise<TransparentInput | null> {
+  try {
+    const blockHash = await client.getBlockHash(blockHeight);
+    const block = await client.getBlock(blockHash, 2); // verbosity 2 for tx data
+
+    // Handle both Zebra (raw format) and zcashd (decoded format)
+    let coinbaseTx: any;
+    if (Array.isArray(block.tx)) {
+      coinbaseTx = block.tx[0];
+    } else {
+      return null;
+    }
+
+    // Check if we have zcashd format (has vout array) or Zebra format (has hex)
+    if (coinbaseTx.vout) {
+      // zcashd-style decoded transaction
+      for (let i = 0; i < coinbaseTx.vout.length; i++) {
+        const vout = coinbaseTx.vout[i];
+        if (
+          vout.scriptPubKey?.addresses?.includes(keypair.address) ||
+          vout.scriptPubKey?.address === keypair.address
+        ) {
+          const txid = Buffer.from(reverseHex(coinbaseTx.txid), 'hex');
+          const scriptPubKey = Buffer.from(vout.scriptPubKey.hex, 'hex');
+          const amount = zecToZatoshi(vout.value);
+
+          return {
+            pubkey: keypair.publicKey,
+            txid,
+            vout: i,
+            amount,
+            scriptPubKey,
+          };
+        }
+      }
+    } else if (coinbaseTx.hex) {
+      // Zebra-style raw transaction hex
+      const outputs = parseTxOutputs(coinbaseTx.hex);
+      const expectedPubkeyHash = bitcoin.crypto.hash160(keypair.publicKey);
+
+      for (let i = 0; i < outputs.length; i++) {
+        const output = outputs[i];
+        // Check if this is a P2PKH output matching our pubkey
+        // P2PKH: OP_DUP OP_HASH160 <20 bytes> OP_EQUALVERIFY OP_CHECKSIG
+        // Hex:   76    a9       14 <pubkeyhash>  88           ac
+        if (output.scriptPubKey.length === 25 &&
+            output.scriptPubKey[0] === 0x76 &&
+            output.scriptPubKey[1] === 0xa9 &&
+            output.scriptPubKey[2] === 0x14 &&
+            output.scriptPubKey[23] === 0x88 &&
+            output.scriptPubKey[24] === 0xac) {
+          const pubkeyHashInScript = output.scriptPubKey.slice(3, 23);
+          if (pubkeyHashInScript.equals(expectedPubkeyHash)) {
+            const txid = Buffer.from(reverseHex(computeTxid(coinbaseTx.hex)), 'hex');
+            return {
+              pubkey: keypair.publicKey,
+              txid,
+              vout: i,
+              amount: output.value,
+              scriptPubKey: output.scriptPubKey,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.error(`Error getting coinbase UTXO at height ${blockHeight}:`, e);
+    return null;
+  }
+}
+
+/**
+ * Get mature coinbase UTXOs (100+ confirmations)
+ * Filters out UTXOs that have been marked as spent in previous examples.
+ * @param startFromRecent If true, scan from most recent mature blocks (default: true)
+ */
+export async function getMatureCoinbaseUtxos(
+  client: ZebraClient,
+  keypair: ZcashKeypair,
+  maxCount: number = 10,
+  startFromRecent: boolean = true
+): Promise<TransparentInput[]> {
+  const info = await client.getBlockchainInfo();
+  const currentHeight = info.blocks;
+  const matureHeight = currentHeight - 100;
+
+  // Load spent UTXOs to filter them out
+  const spentUtxos = await loadSpentUtxos();
+
+  const utxos: TransparentInput[] = [];
+
+  if (startFromRecent) {
+    // Scan from most recent mature blocks backwards to get fresh UTXOs
+    for (let height = matureHeight; height >= 1 && utxos.length < maxCount; height--) {
+      const utxo = await getCoinbaseUtxo(client, height, keypair);
+      if (utxo) {
+        const key = `${utxo.txid.toString('hex')}:${utxo.vout}`;
+        if (!spentUtxos.has(key)) {
+          utxos.push(utxo);
+        }
+      }
+    }
+  } else {
+    // Start from block 1 (block 0 is genesis with no coinbase output)
+    for (let height = 1; height <= matureHeight && utxos.length < maxCount; height++) {
+      const utxo = await getCoinbaseUtxo(client, height, keypair);
+      if (utxo) {
+        const key = `${utxo.txid.toString('hex')}:${utxo.vout}`;
+        if (!spentUtxos.has(key)) {
+          utxos.push(utxo);
+        }
+      }
+    }
+  }
+
+  return utxos;
 }
 
 /**
@@ -224,7 +344,7 @@ export function formatTransaction(tx: any): string {
  */
 export function printBroadcastResult(txid: string, txHex?: string): void {
   console.log('\n' + '='.repeat(70));
-  console.log('✅ TRANSACTION BROADCAST SUCCESSFUL');
+  console.log('TRANSACTION BROADCAST SUCCESSFUL');
   console.log('='.repeat(70));
   console.log(`\nTXID: ${txid}`);
   if (txHex) {
@@ -239,7 +359,7 @@ export function printBroadcastResult(txid: string, txHex?: string): void {
  */
 export function printError(title: string, error: Error): void {
   console.log('\n' + '='.repeat(70));
-  console.log(`❌ ${title}`);
+  console.log(`ERROR: ${title}`);
   console.log('='.repeat(70));
   console.log(`\nError: ${error.message}`);
   if (error.stack) {
@@ -264,18 +384,23 @@ export function printWorkflowSummary(
   const totalInput = inputs.reduce((sum, input) => sum + input.amount, 0n);
   const totalOutput = outputs.reduce((sum, output) => sum + BigInt(output.amount), 0n);
 
-  console.log(`\n📥 Inputs: ${inputs.length}`);
+  console.log(`\nInputs: ${inputs.length}`);
   inputs.forEach((input, i) => {
     console.log(`  [${i}] ${zatoshiToZec(input.amount)} ZEC`);
   });
   console.log(`  Total: ${zatoshiToZec(totalInput)} ZEC`);
 
-  console.log(`\n📤 Outputs: ${outputs.length}`);
+  console.log(`\nOutputs: ${outputs.length}`);
   outputs.forEach((output, i) => {
-    console.log(`  [${i}] ${output.address.slice(0, 20)}... → ${zatoshiToZec(BigInt(output.amount))} ZEC`);
+    console.log(
+      `  [${i}] ${output.address.slice(0, 20)}... -> ${zatoshiToZec(BigInt(output.amount))} ZEC`
+    );
   });
   console.log(`  Total: ${zatoshiToZec(totalOutput)} ZEC`);
 
-  console.log(`\n💰 Fee: ${zatoshiToZec(fee)} ZEC`);
+  console.log(`\nFee: ${zatoshiToZec(fee)} ZEC`);
   console.log('='.repeat(70) + '\n');
 }
+
+// Re-export commonly used functions
+export { bytesToHex };

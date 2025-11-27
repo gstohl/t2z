@@ -204,8 +204,12 @@ pub struct TransactionRequest {
     /// Optional memo for the transaction
     pub memo: Option<String>,
     /// Optional target block height for consensus branch ID selection
-    /// If None, defaults to a recent mainnet height
+    /// If None, defaults to a recent testnet height
     pub target_height: Option<u32>,
+    /// Use mainnet parameters (default: false = testnet)
+    /// This affects the consensus branch ID embedded in the transaction
+    #[serde(default)]
+    pub use_mainnet: bool,
 }
 
 /// A single payment to a recipient
@@ -229,6 +233,7 @@ impl TransactionRequest {
             payments,
             memo: None,
             target_height: None,
+            use_mainnet: false,
         }
     }
 

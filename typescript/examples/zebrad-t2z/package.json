@@ -1,29 +1,25 @@
 {
   "name": "zebrad-t2z-examples",
   "version": "1.0.0",
-  "description": "Comprehensive t2z examples using Zebra regtest (future-proof!)",
+  "description": "t2z examples using Zebra regtest",
   "type": "module",
   "scripts": {
-    "docker:up": "docker-compose up -d --build",
-    "docker:down": "docker-compose down -v",
-    "docker:logs:zebra": "docker-compose logs -f zebra",
-    "docker:logs:examples": "docker-compose logs -f examples",
-    "docker:shell": "docker-compose exec examples sh",
-    "setup": "docker-compose exec examples npm run setup:internal",
-    "setup:internal": "tsx src/setup.ts",
-    "example:1": "docker-compose exec examples npm run example:1:internal",
-    "example:1:internal": "tsx src/examples/1-single-output.ts",
-    "example:2": "docker-compose exec examples npm run example:2:internal",
-    "example:2:internal": "tsx src/examples/2-multiple-outputs.ts",
-    "example:3": "docker-compose exec examples npm run example:3:internal",
-    "example:3:internal": "tsx src/examples/3-mixed-outputs.ts",
-    "example:4": "docker-compose exec examples npm run example:4:internal",
-    "example:4:internal": "tsx src/examples/4-attack-scenario.ts",
-    "all": "npm run example:1 && npm run example:2 && npm run example:3 && npm run example:4"
+    "setup": "tsx src/setup.ts",
+    "example:1": "tsx src/examples/1-single-output.ts",
+    "example:2": "tsx src/examples/2-multiple-outputs.ts",
+    "example:3": "tsx src/examples/3-mixed-outputs.ts",
+    "example:4": "tsx src/examples/4-attack-scenario.ts",
+    "example:5": "tsx src/examples/5-shielded-output.ts",
+    "example:6": "tsx src/examples/6-multiple-shielded.ts",
+    "example:7": "tsx src/examples/7-mixed-transparent-shielded.ts",
+    "all": "npm run example:1 && npm run example:2 && npm run example:3 && npm run example:4 && npm run example:5 && npm run example:6 && npm run example:7"
   },
   "dependencies": {
     "t2z": "file:../..",
-    "@mayaprotocol/zcash-ts": "^1.0.1"
+    "bitcoinjs-lib": "^6.1.6",
+    "ecpair": "^2.1.0",
+    "tiny-secp256k1": "^2.2.3",
+    "bs58check": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",

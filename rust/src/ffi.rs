@@ -183,6 +183,25 @@ pub unsafe extern "C" fn pczt_transaction_request_set_target_height(
     ResultCode::Success
 }
 
+/// Sets whether to use mainnet parameters for consensus branch ID
+///
+/// By default, the library uses testnet parameters. Set this to true
+/// for mainnet or for regtest networks that use mainnet-like branch IDs.
+#[no_mangle]
+pub unsafe extern "C" fn pczt_transaction_request_set_use_mainnet(
+    request: *mut TransactionRequestHandle,
+    use_mainnet: bool,
+) -> ResultCode {
+    if request.is_null() {
+        set_last_error(FfiError::NullPointer);
+        return ResultCode::ErrorNullPointer;
+    }
+
+    let tx_request = &mut *(request as *mut TransactionRequest);
+    tx_request.use_mainnet = use_mainnet;
+    ResultCode::Success
+}
+
 /// Proposes a new transaction using serialized input bytes
 #[no_mangle]
 pub unsafe extern "C" fn pczt_propose_transaction(

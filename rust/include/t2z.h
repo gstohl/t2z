@@ -109,6 +109,17 @@ enum ResultCode pczt_transaction_request_set_target_height(struct TransactionReq
 ;
 
 /**
+ * Sets whether to use mainnet parameters for consensus branch ID
+ *
+ * By default, the library uses testnet parameters. Set this to true
+ * for mainnet or for regtest networks that use mainnet-like branch IDs.
+ */
+
+enum ResultCode pczt_transaction_request_set_use_mainnet(struct TransactionRequestHandle *aRequest,
+                                                         bool aUseMainnet)
+;
+
+/**
  * Proposes a new transaction using serialized input bytes
  */
 

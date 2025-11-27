@@ -14,6 +14,16 @@ pub mod addresses {
 
     /// Generate a valid testnet unified address with Orchard receiver
     pub fn unified_orchard() -> String {
+        unified_orchard_for_network(false)
+    }
+
+    /// Generate a valid mainnet unified address with Orchard receiver
+    pub fn unified_orchard_mainnet() -> String {
+        unified_orchard_for_network(true)
+    }
+
+    /// Generate a unified address with Orchard receiver for specified network
+    fn unified_orchard_for_network(mainnet: bool) -> String {
         use orchard::keys::{SpendingKey, FullViewingKey};
         use zcash_address::unified::{Address as UnifiedAddress, Receiver, Encoding};
         use zcash_address::Network;
@@ -24,7 +34,7 @@ pub mod addresses {
 
         let items = vec![Receiver::Orchard(orchard_addr.to_raw_address_bytes())];
         let ua = UnifiedAddress::try_from_items(items).unwrap();
-        ua.encode(&Network::Test)
+        ua.encode(if mainnet { &Network::Main } else { &Network::Test })
     }
 }
 
@@ -251,5 +261,11 @@ mod tests {
         let u_payment = Payment::new(addresses::unified_orchard(), 1000);
         assert!(u_payment.is_unified());
         assert!(!u_payment.is_transparent());
+    }
+
+    #[test]
+    fn print_unified_addresses() {
+        println!("Testnet unified address: {}", addresses::unified_orchard());
+        println!("Mainnet unified address: {}", addresses::unified_orchard_mainnet());
     }
 }

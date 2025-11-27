@@ -1,19 +1,25 @@
 /**
  * Example 2: Multiple Output Transaction
  *
- * Demonstrates sending to multiple Orchard addresses in a single transaction:
- * - Select transparent UTXOs
- * - Create multiple shielded payments
+ * Demonstrates sending to multiple transparent addresses in a single transaction:
+ * - Use multiple coinbase UTXOs as inputs
+ * - Create multiple outputs
  * - Show how change is handled
+ *
+ * Note: Using transparent outputs since Zebra has no wallet for shielded.
  */
 
-import { ZcashdClient } from '../zcashd-client.js';
+import { ZebraClient } from '../zebra-client.js';
+import { TEST_KEYPAIR, signDER, generateNewKeypair, bytesToHex } from '../keys.js';
 import {
   utxoToTransparentInput,
   printWorkflowSummary,
   printBroadcastResult,
   printError,
   zatoshiToZec,
+  zecToZatoshi,
+  getMatureCoinbaseUtxos,
+  markUtxosSpent,
 } from '../utils.js';
 import {
   TransactionRequest,
@@ -23,156 +29,166 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
-  signMessage,
   Payment,
+  TransparentInput,
 } from 't2z';
 
-async function main() {
-  console.log('\n' + '█'.repeat(70));
-  console.log('  EXAMPLE 2: MULTIPLE OUTPUT TRANSACTION');
-  console.log('█'.repeat(70) + '\n');
+interface TestData {
+  transparent: {
+    address: string;
+    publicKey: string;
+    privateKey: string;
+    wif: string;
+  };
+  utxos: Array<{
+    txid: string;
+    vout: number;
+    amount: number;
+    scriptPubKey: string;
+  }>;
+}
 
-  const client = new ZcashdClient();
+async function main() {
+  console.log('\n' + '='.repeat(70));
+  console.log('  EXAMPLE 2: MULTIPLE OUTPUT TRANSACTION');
+  console.log('='.repeat(70) + '\n');
+
+  const client = new ZebraClient();
 
   try {
-    // Load test addresses
+    // Load test data from setup
     const fs = await import('fs/promises');
-    const addresses = JSON.parse(await fs.readFile('test-addresses.json', 'utf-8'));
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const dataFile = path.join(__dirname, '..', '..', 'data', 'test-addresses.json');
+    const testData: TestData = JSON.parse(
+      await fs.readFile(dataFile, 'utf-8')
+    );
 
-    // Create additional Orchard accounts for this example
-    console.log('🛡️  Creating additional Orchard accounts...');
-    const account2 = await client.createAccount();
-    const account3 = await client.createAccount();
+    console.log('Generating additional destination addresses...');
+    // Generate two new addresses for receiving (client-side)
+    const dest1 = generateNewKeypair();
+    const dest2 = generateNewKeypair();
 
-    console.log('📋 Configuration:');
-    console.log(`  Source: ${addresses.transparent}`);
-    console.log(`  Destination 1: ${addresses.unified}`);
-    console.log(`  Destination 2: ${account2.address}`);
-    console.log(`  Destination 3: ${account3.address}\n`);
+    console.log('Configuration:');
+    console.log(`  Source: ${testData.transparent.address}`);
+    console.log(`  Destination 1: ${dest1.address}`);
+    console.log(`  Destination 2: ${dest2.address}\n`);
 
-    // Get UTXOs
-    console.log('🔍 Fetching UTXOs...');
-    const utxos = await client.listUnspent(1, 9999999, [addresses.transparent]);
+    // Get more UTXOs if available from the blockchain
+    console.log('Fetching mature coinbase UTXOs...');
+    const freshUtxos = await getMatureCoinbaseUtxos(client, TEST_KEYPAIR, 3);
 
-    if (utxos.length === 0) {
-      throw new Error('No UTXOs available. Run setup.ts first.');
+    if (freshUtxos.length === 0) {
+      throw new Error('No mature UTXOs available. Run setup first and wait for block maturity.');
     }
 
+    console.log(`Found ${freshUtxos.length} mature UTXO(s)`);
+    freshUtxos.forEach((utxo, i) => {
+      console.log(`  [${i}] ${zatoshiToZec(utxo.amount)} ZEC`);
+    });
+    console.log();
+
     // Use first UTXO
-    const utxo = utxos[0];
-    console.log(`✅ Selected UTXO: ${zatoshiToZec(BigInt(Math.floor(utxo.amount * 100_000_000)))} ZEC\n`);
+    const input = freshUtxos[0];
+    const totalInput = input.amount;
 
-    const input = await utxoToTransparentInput(client, utxo);
+    // Create multiple payments with dynamic amounts based on available UTXO
+    // ZIP 317 fee for 1 input + 3 outputs = ~15-20k zatoshis
+    const fee = 20_000n;
+    // Split available funds: 30% each for payments, 40% for change
+    const availableForPayments = totalInput - fee;
+    const payment1Amount = availableForPayments * 3n / 10n; // 30%
+    const payment2Amount = availableForPayments * 3n / 10n; // 30%
 
-    // Create multiple payments
     const payments: Payment[] = [
       {
-        address: addresses.unified,
-        amount: (100_000_000n).toString(), // 1 ZEC
+        address: dest1.address,
+        amount: payment1Amount.toString(),
       },
       {
-        address: account2.address,
-        amount: (50_000_000n).toString(), // 0.5 ZEC
-      },
-      {
-        address: account3.address,
-        amount: (25_000_000n).toString(), // 0.25 ZEC
+        address: dest2.address,
+        amount: payment2Amount.toString(),
       },
     ];
 
-    console.log('📝 Creating TransactionRequest with 3 payments...');
+    console.log('Creating TransactionRequest with 2 payments...');
     const request = new TransactionRequest(payments);
 
-    const fee = 15_000n;
+    // Configure for Zebra regtest (uses mainnet branch IDs)
+    request.setUseMainnet(true);
+    request.setTargetHeight(2_500_000); // Post-NU5 mainnet height
+    console.log('   Using mainnet branch ID for Zebra regtest\n');
+
     printWorkflowSummary(
-      '📊 TRANSACTION SUMMARY - THREE RECIPIENTS',
+      'TRANSACTION SUMMARY - TWO RECIPIENTS',
       [input],
       payments.map((p) => ({ address: p.address, amount: p.amount })),
       fee
     );
 
+    // Calculate expected change
+    const totalPayments = payment1Amount + payment2Amount;
+    const expectedChange = totalInput - totalPayments - fee;
+    console.log(`Expected change: ${zatoshiToZec(expectedChange)} ZEC\n`);
+
     // Workflow
-    console.log('1️⃣  Proposing transaction...');
+    console.log('1. Proposing transaction...');
     const pczt = proposeTransaction([input], request);
-    console.log('   ✅ PCZT created with 3 Orchard outputs\n');
+    console.log('   PCZT created with 2 outputs + change\n');
 
-    console.log('2️⃣  Proving transaction...');
+    console.log('2. Proving transaction...');
     const proved = proveTransaction(pczt);
-    console.log('   ✅ Generated 3 Orchard proofs\n');
+    console.log('   Proofs generated\n');
 
-    console.log('3️⃣  Verifying PCZT...');
+    console.log('3. Verifying PCZT...');
     verifyBeforeSigning(proved, request, []);
-    console.log('   ✅ Verified: all 3 payments present\n');
+    console.log('   Verified: both payments present\n');
 
-    console.log('4️⃣  Getting sighash...');
+    console.log('4. Getting sighash...');
     const sighash = getSighash(proved, 0);
     console.log(`   Sighash: ${sighash.toString('hex').slice(0, 32)}...\n`);
 
-    console.log('5️⃣  Signing transaction...');
-    const privKeyWIF = await client.dumpPrivKey(addresses.transparent);
-    const privKeyBuffer = decodePrivateKey(privKeyWIF);
-    const signature = await signMessage(privKeyBuffer, sighash);
+    console.log('5. Signing transaction (client-side)...');
+    const signature = signDER(sighash, TEST_KEYPAIR);
     console.log(`   Signature: ${signature.toString('hex').slice(0, 32)}...\n`);
 
-    console.log('6️⃣  Appending signature...');
+    console.log('6. Appending signature...');
     const signed = appendSignature(proved, 0, signature);
-    console.log('   ✅ Signature appended\n');
+    console.log('   Signature appended\n');
 
-    console.log('7️⃣  Finalizing transaction...');
+    console.log('7. Finalizing transaction...');
     const txBytes = finalizeAndExtract(signed);
     const txHex = txBytes.toString('hex');
-    console.log(`   ✅ Transaction finalized (${txBytes.length} bytes)\n`);
+    console.log(`   Transaction finalized (${txBytes.length} bytes)\n`);
 
-    console.log('8️⃣  Broadcasting transaction...');
+    console.log('8. Broadcasting transaction...');
     const txid = await client.sendRawTransaction(txHex);
     printBroadcastResult(txid, txHex);
 
-    console.log('⛏️  Mining confirmation block...');
-    await client.generate(1);
-    console.log('   ✅ Transaction confirmed\n');
+    // Mark UTXO as spent for subsequent examples
+    await markUtxosSpent([input]);
 
-    // Get transaction details
-    const tx = await client.getRawTransaction(txid, true);
-    console.log('📄 Transaction Analysis:');
-    console.log(`   Total sent to shielded addresses: 1.75 ZEC`);
-    console.log(`   Fee: ${zatoshiToZec(fee)} ZEC`);
-    console.log(`   Change (auto-shielded): ${zatoshiToZec(input.amount - 175_000_000n - fee)} ZEC`);
-    console.log(`   Transparent inputs: ${tx.vin.length}`);
-    console.log(`   Orchard outputs: 4 (3 payments + 1 change)\n`);
+    // Wait for internal miner to confirm
+    console.log('Waiting for confirmation (internal miner)...');
+    const currentHeight = (await client.getBlockchainInfo()).blocks;
+    await client.waitForBlocks(currentHeight + 1, 60000);
+    console.log('   Transaction confirmed!\n');
 
-    console.log('✅ EXAMPLE 2 COMPLETED SUCCESSFULLY!\n');
+    // Note: Zebra's getrawtransaction doesn't return decoded fields
+    console.log('Transaction confirmed in the blockchain.');
+    console.log(`  TXID: ${txid}`);
+    console.log(`  Sent to 2 recipients + change\n`);
 
+    console.log('EXAMPLE 2 COMPLETED SUCCESSFULLY!\n');
+
+    // Cleanup
     request.free();
   } catch (error: any) {
     printError('EXAMPLE 2 FAILED', error);
     process.exit(1);
   }
-}
-
-function decodePrivateKey(wif: string): Buffer {
-  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let num = BigInt(0);
-
-  for (let i = 0; i < wif.length; i++) {
-    const p = ALPHABET.indexOf(wif[i]);
-    if (p === -1) throw new Error('Invalid base58');
-    num = num * BigInt(58) + BigInt(p);
-  }
-
-  let hex = num.toString(16);
-  if (hex.length % 2) hex = '0' + hex;
-
-  const bytes: number[] = [];
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.slice(i, i + 2), 16));
-  }
-
-  for (let i = 0; i < wif.length && wif[i] === '1'; i++) {
-    bytes.unshift(0);
-  }
-
-  const decoded = Buffer.from(bytes);
-  return decoded.slice(1, 33);
 }
 
 main();
