@@ -99,10 +99,38 @@ func TestSetTargetHeight(t *testing.T) {
 	}
 	defer req.Free()
 
-	// Set target height
-	err = req.SetTargetHeight(2_000_000)
+	// Set target height (post-NU5 mainnet height, like TypeScript examples)
+	err = req.SetTargetHeight(2_500_000)
 	if err != nil {
 		t.Fatalf("Failed to set target height: %v", err)
+	}
+}
+
+// Test SetUseMainnet method (matches TypeScript example behavior)
+func TestSetUseMainnet(t *testing.T) {
+	payments := []Payment{
+		{
+			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
+			Amount:  100_000,
+		},
+	}
+
+	req, err := NewTransactionRequest(payments)
+	if err != nil {
+		t.Fatalf("Failed to create transaction request: %v", err)
+	}
+	defer req.Free()
+
+	// Set to use mainnet parameters (like TypeScript zebrad examples)
+	err = req.SetUseMainnet(true)
+	if err != nil {
+		t.Fatalf("Failed to set use mainnet: %v", err)
+	}
+
+	// Also test setting it to false
+	err = req.SetUseMainnet(false)
+	if err != nil {
+		t.Fatalf("Failed to set use mainnet to false: %v", err)
 	}
 }
 

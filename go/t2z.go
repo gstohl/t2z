@@ -685,6 +685,31 @@ func (r *TransactionRequest) SetTargetHeight(height uint32) error {
 	return nil
 }
 
+// SetUseMainnet sets whether to use mainnet parameters for consensus branch ID.
+//
+// By default, the library uses testnet parameters. Set this to true
+// for mainnet or for regtest networks that use mainnet-like branch IDs
+// (like Zebra's regtest mode).
+//
+// Parameters:
+//   - useMainnet: True to use mainnet parameters, false for testnet
+func (r *TransactionRequest) SetUseMainnet(useMainnet bool) error {
+	if r == nil || r.handle == nil {
+		return errors.New("invalid transaction request")
+	}
+
+	code := C.pczt_transaction_request_set_use_mainnet(
+		r.handle,
+		C.bool(useMainnet),
+	)
+
+	if code != C.SUCCESS {
+		return wrapError(ResultCode(code))
+	}
+
+	return nil
+}
+
 // NewTransactionRequestWithTargetHeight creates a new transaction request
 // with a specific target block height.
 //

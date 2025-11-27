@@ -10,11 +10,17 @@ import (
 )
 
 // ExampleNewTransactionRequest demonstrates creating a payment request.
+// Follows TypeScript zebrad-t2z example patterns.
 func ExampleNewTransactionRequest() {
+	// TypeScript: Uses 50% of input for payment
+	// Simulating: 1 ZEC input -> 0.5 ZEC payment (50%)
+	inputAmount := uint64(100_000_000) // 1 ZEC
+	paymentAmount := inputAmount / 2    // 50%, like TypeScript Example 1
+
 	payments := []t2z.Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000, // 0.001 ZEC
+			Amount:  paymentAmount,
 			Memo:    "Example payment",
 		},
 	}
@@ -25,18 +31,30 @@ func ExampleNewTransactionRequest() {
 	}
 	defer request.Free()
 
+	// Configure for mainnet (like TypeScript zebrad examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
+
 	fmt.Printf("Created request with %d payment(s)\n", len(request.Payments))
 	// Output: Created request with 1 payment(s)
 }
 
 // ExampleProposeTransaction demonstrates creating a PCZT from inputs and a payment request.
+// Follows TypeScript zebrad-t2z Example 1 pattern.
 func ExampleProposeTransaction() {
-	// Create payment request
+	// Match TypeScript amounts: 1 ZEC input, 50% payment
+	inputAmount := uint64(100_000_000) // 1 ZEC
+	paymentAmount := inputAmount / 2   // 50%
+
 	payments := []t2z.Payment{
-		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: paymentAmount},
 	}
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript zebrad examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	// Setup test input
 	privateKeyBytes := make([]byte, 32)
@@ -55,7 +73,7 @@ func ExampleProposeTransaction() {
 			Pubkey:       pubKeyBytes,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000,
+			Amount:       inputAmount,
 			ScriptPubKey: scriptPubKey,
 		},
 	}
@@ -72,13 +90,21 @@ func ExampleProposeTransaction() {
 }
 
 // ExampleSerialize demonstrates serializing a PCZT for transmission or storage.
+// Follows TypeScript patterns.
 func ExampleSerialize() {
-	// ... setup code from ExampleProposeTransaction ...
+	// Match TypeScript amounts
+	inputAmount := uint64(100_000_000) // 1 ZEC
+	paymentAmount := inputAmount / 2   // 50%
+
 	payments := []t2z.Payment{
-		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: paymentAmount},
 	}
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	privateKeyBytes := make([]byte, 32)
 	for i := range privateKeyBytes {
@@ -90,7 +116,7 @@ func ExampleSerialize() {
 
 	var txid [32]byte
 	inputs := []t2z.TransparentInput{
-		{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: 100_000_000, ScriptPubKey: scriptPubKey},
+		{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: inputAmount, ScriptPubKey: scriptPubKey},
 	}
 
 	pczt, _ := t2z.ProposeTransaction(inputs, request)
@@ -105,10 +131,11 @@ func ExampleSerialize() {
 	pczt.Free()
 
 	fmt.Printf("Serialized PCZT: %d bytes\n", len(pcztBytes))
-	// Output: Serialized PCZT: 365 bytes
+	// Output: Serialized PCZT: 367 bytes
 }
 
 // ExampleParse demonstrates parsing a serialized PCZT.
+// Follows TypeScript patterns.
 func ExampleParse() {
 	// Assume we have serialized PCZT bytes (e.g., from hardware wallet)
 	// This would come from Serialize() in production
@@ -117,11 +144,19 @@ func ExampleParse() {
 	pcztBytes, _ := hex.DecodeString(pcztBytesHex)
 	if len(pcztBytes) == 0 {
 		// For example purposes, create valid bytes
+		// Match TypeScript amounts
+		inputAmount := uint64(100_000_000)
+		paymentAmount := inputAmount / 2
+
 		payments := []t2z.Payment{
-			{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+			{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: paymentAmount},
 		}
 		request, _ := t2z.NewTransactionRequest(payments)
 		defer request.Free()
+
+		// Configure for mainnet (like TypeScript examples)
+		request.SetUseMainnet(true)
+		request.SetTargetHeight(2_500_000)
 
 		privateKeyBytes := make([]byte, 32)
 		for i := range privateKeyBytes {
@@ -133,7 +168,7 @@ func ExampleParse() {
 
 		var txid [32]byte
 		inputs := []t2z.TransparentInput{
-			{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: 100_000_000, ScriptPubKey: scriptPubKey},
+			{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: inputAmount, ScriptPubKey: scriptPubKey},
 		}
 
 		pczt, _ := t2z.ProposeTransaction(inputs, request)
@@ -153,13 +188,21 @@ func ExampleParse() {
 }
 
 // ExampleGetSighash demonstrates getting a signature hash for signing.
+// Follows TypeScript patterns.
 func ExampleGetSighash() {
-	// ... setup PCZT ...
+	// Match TypeScript amounts
+	inputAmount := uint64(100_000_000) // 1 ZEC
+	paymentAmount := inputAmount / 2   // 50%
+
 	payments := []t2z.Payment{
-		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: paymentAmount},
 	}
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	privateKeyBytes := make([]byte, 32)
 	for i := range privateKeyBytes {
@@ -171,7 +214,7 @@ func ExampleGetSighash() {
 
 	var txid [32]byte
 	inputs := []t2z.TransparentInput{
-		{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: 100_000_000, ScriptPubKey: scriptPubKey},
+		{Pubkey: pubKeyBytes, TxID: txid, Vout: 0, Amount: inputAmount, ScriptPubKey: scriptPubKey},
 	}
 
 	pczt, _ := t2z.ProposeTransaction(inputs, request)
@@ -188,36 +231,52 @@ func ExampleGetSighash() {
 }
 
 // ExampleNewTransactionRequestWithTargetHeight demonstrates creating a request with target height.
+// Matches TypeScript zebrad example target height.
 func ExampleNewTransactionRequestWithTargetHeight() {
+	// Match TypeScript amounts
+	inputAmount := uint64(100_000_000)
+	paymentAmount := inputAmount / 2
+
 	payments := []t2z.Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000,
+			Amount:  paymentAmount,
 		},
 	}
 
-	// Create request with specific target block height
-	request, err := t2z.NewTransactionRequestWithTargetHeight(payments, 2_000_000)
+	// Create request with specific target block height (post-NU5 like TypeScript)
+	request, err := t2z.NewTransactionRequestWithTargetHeight(payments, 2_500_000)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer request.Free()
+
+	// TypeScript also sets mainnet for zebrad regtest
+	request.SetUseMainnet(true)
 
 	fmt.Printf("Created request with %d payment(s)\n", len(request.Payments))
 	// Output: Created request with 1 payment(s)
 }
 
 // ExampleTransactionRequest_SetTargetHeight demonstrates setting target height on existing request.
+// Matches TypeScript zebrad patterns.
 func ExampleTransactionRequest_SetTargetHeight() {
+	// Match TypeScript amounts
+	inputAmount := uint64(100_000_000)
+	paymentAmount := inputAmount / 2
+
 	payments := []t2z.Payment{
-		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: 100_000},
+		{Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma", Amount: paymentAmount},
 	}
 
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
 
-	// Set target height after creation
-	err := request.SetTargetHeight(2_000_000)
+	// Configure for mainnet (like TypeScript zebrad examples)
+	request.SetUseMainnet(true)
+
+	// Set target height after creation (post-NU5 like TypeScript)
+	err := request.SetTargetHeight(2_500_000)
 	if err != nil {
 		log.Fatal(err)
 	}

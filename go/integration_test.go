@@ -53,32 +53,41 @@ func signMessage(privateKey []byte, message [32]byte) ([64]byte, error) {
 }
 
 // TestFullTransparentWorkflow tests the complete transparent-to-transparent workflow
+// Follows the same pattern as TypeScript zebrad-t2z examples
 func TestFullTransparentWorkflow(t *testing.T) {
 	// 1. Create test keypair
 	privateKey, pubkey := createTestKeypair()
 	_ = privateKey // Will be used for signing
 
-	// 2. Create a fake UTXO
+	// 2. Create a fake UTXO (simulating a coinbase UTXO like TypeScript examples)
 	var txid [32]byte
 	copy(txid[:], []byte("test_txid_000000000000000000000000"))
 
 	scriptPubKey := createP2PKHScript(pubkey)
+
+	// Input amount: 1 ZEC (like TypeScript uses coinbase rewards ~6.25 ZEC)
+	inputAmount := uint64(100_000_000) // 1 ZEC
 
 	inputs := []TransparentInput{
 		{
 			Pubkey:       pubkey,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000, // 1 ZEC
+			Amount:       inputAmount,
 			ScriptPubKey: scriptPubKey,
 		},
 	}
 
-	// 3. Create payment request
+	// 3. Create payment request (matches TypeScript Example 1 pattern)
+	// TypeScript: paymentAmount = input.amount / 2n (50% of input)
+	// TypeScript: fee = 10_000n for transparent-only tx
+	paymentAmount := inputAmount / 2 // 50% of input, like TypeScript
+	fee := uint64(10_000)            // ZIP-317 fee for T→T
+
 	payments := []Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000, // 0.001 ZEC
+			Amount:  paymentAmount,
 		},
 	}
 
@@ -87,6 +96,22 @@ func TestFullTransparentWorkflow(t *testing.T) {
 		t.Fatalf("Failed to create transaction request: %v", err)
 	}
 	defer request.Free()
+
+	// Configure for mainnet parameters (like TypeScript zebrad examples)
+	// TypeScript: request.setUseMainnet(true)
+	err = request.SetUseMainnet(true)
+	if err != nil {
+		t.Fatalf("Failed to set use mainnet: %v", err)
+	}
+
+	// TypeScript: request.setTargetHeight(2_500_000)
+	err = request.SetTargetHeight(2_500_000)
+	if err != nil {
+		t.Fatalf("Failed to set target height: %v", err)
+	}
+	t.Logf("✓ Configured for mainnet branch ID (target height: 2,500,000)")
+	t.Logf("  Payment: %d zatoshis (50%% of input)", paymentAmount)
+	t.Logf("  Fee: %d zatoshis", fee)
 
 	// 4. Propose transaction
 	pczt, err := ProposeTransaction(inputs, request)
@@ -144,6 +169,7 @@ func TestFullTransparentWorkflow(t *testing.T) {
 }
 
 // TestPCZTSerialization tests PCZT serialization and parsing
+// Follows TypeScript patterns for consistency
 func TestPCZTSerialization(t *testing.T) {
 	// Create a simple PCZT
 	_, pubkey := createTestKeypair()
@@ -151,12 +177,16 @@ func TestPCZTSerialization(t *testing.T) {
 	var txid [32]byte
 	copy(txid[:], []byte("test_txid_serialization_test_000"))
 
+	// Match TypeScript amounts: 1 ZEC input, 50% payment
+	inputAmount := uint64(100_000_000) // 1 ZEC
+	paymentAmount := inputAmount / 2   // 50%, like TypeScript
+
 	inputs := []TransparentInput{
 		{
 			Pubkey:       pubkey,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000,
+			Amount:       inputAmount,
 			ScriptPubKey: createP2PKHScript(pubkey),
 		},
 	}
@@ -164,7 +194,7 @@ func TestPCZTSerialization(t *testing.T) {
 	payments := []Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000,
+			Amount:  paymentAmount,
 		},
 	}
 
@@ -173,6 +203,10 @@ func TestPCZTSerialization(t *testing.T) {
 		t.Fatalf("Failed to create transaction request: %v", err)
 	}
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
 	if err != nil {
@@ -226,12 +260,15 @@ func TestGetSighashInvalidIndex(t *testing.T) {
 	_, pubkey := createTestKeypair()
 
 	var txid [32]byte
+	inputAmount := uint64(100_000_000)
+	paymentAmount := inputAmount / 2
+
 	inputs := []TransparentInput{
 		{
 			Pubkey:       pubkey,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000,
+			Amount:       inputAmount,
 			ScriptPubKey: createP2PKHScript(pubkey),
 		},
 	}
@@ -239,7 +276,7 @@ func TestGetSighashInvalidIndex(t *testing.T) {
 	payments := []Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000,
+			Amount:  paymentAmount,
 		},
 	}
 
@@ -248,6 +285,10 @@ func TestGetSighashInvalidIndex(t *testing.T) {
 		t.Fatalf("Failed to create transaction request: %v", err)
 	}
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
 	if err != nil {
@@ -266,18 +307,25 @@ func TestGetSighashInvalidIndex(t *testing.T) {
 }
 
 // TestVerifyBeforeSigning tests the VerifyBeforeSigning function
+// Follows TypeScript pattern with mainnet config and 50% payment
 func TestVerifyBeforeSigning(t *testing.T) {
 	_, pubkey := createTestKeypair()
 
 	var txid [32]byte
 	copy(txid[:], []byte("test_txid_verify_signing_test_00"))
 
+	// Match TypeScript amounts
+	inputAmount := uint64(100_000_000)    // 1 ZEC
+	paymentAmount := inputAmount / 2      // 50%
+	fee := uint64(10_000)                 // ZIP-317 T→T fee
+	expectedChangeAmount := inputAmount - paymentAmount - fee
+
 	inputs := []TransparentInput{
 		{
 			Pubkey:       pubkey,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000,
+			Amount:       inputAmount,
 			ScriptPubKey: createP2PKHScript(pubkey),
 		},
 	}
@@ -285,7 +333,7 @@ func TestVerifyBeforeSigning(t *testing.T) {
 	payments := []Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000,
+			Amount:  paymentAmount,
 		},
 	}
 
@@ -294,6 +342,10 @@ func TestVerifyBeforeSigning(t *testing.T) {
 		t.Fatalf("Failed to create transaction request: %v", err)
 	}
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
 	if err != nil {
@@ -305,7 +357,7 @@ func TestVerifyBeforeSigning(t *testing.T) {
 	expectedChange := []TransparentOutput{
 		{
 			ScriptPubKey: createP2PKHScript(pubkey), // Raw script, no prefix
-			Value:        100_000_000 - 100_000 - 10_000, // amount - payment - fee
+			Value:        expectedChangeAmount,       // amount - payment - fee
 		},
 	}
 
@@ -327,12 +379,15 @@ func TestAppendSignatureInvalidIndex(t *testing.T) {
 	_, pubkey := createTestKeypair()
 
 	var txid [32]byte
+	inputAmount := uint64(100_000_000)
+	paymentAmount := inputAmount / 2
+
 	inputs := []TransparentInput{
 		{
 			Pubkey:       pubkey,
 			TxID:         txid,
 			Vout:         0,
-			Amount:       100_000_000,
+			Amount:       inputAmount,
 			ScriptPubKey: createP2PKHScript(pubkey),
 		},
 	}
@@ -340,7 +395,7 @@ func TestAppendSignatureInvalidIndex(t *testing.T) {
 	payments := []Payment{
 		{
 			Address: "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma",
-			Amount:  100_000,
+			Amount:  paymentAmount,
 		},
 	}
 
@@ -349,6 +404,10 @@ func TestAppendSignatureInvalidIndex(t *testing.T) {
 		t.Fatalf("Failed to create transaction request: %v", err)
 	}
 	defer request.Free()
+
+	// Configure for mainnet (like TypeScript examples)
+	request.SetUseMainnet(true)
+	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
 	if err != nil {

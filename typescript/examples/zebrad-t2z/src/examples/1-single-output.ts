@@ -62,20 +62,23 @@ async function main() {
     console.log(`  Source address: ${testData.transparent.address}`);
 
     // Fetch fresh mature coinbase UTXOs from the blockchain
+    // Note: Regtest coinbase rewards are very small, so we need multiple UTXOs
     console.log('Fetching mature coinbase UTXOs...');
-    const utxos = await getMatureCoinbaseUtxos(client, TEST_KEYPAIR, 1);
+    const utxos = await getMatureCoinbaseUtxos(client, TEST_KEYPAIR, 6);
 
-    if (utxos.length === 0) {
-      throw new Error('No mature UTXOs available. Run setup and wait for maturity.');
+    if (utxos.length < 5) {
+      throw new Error('Need at least 5 mature UTXOs. Run setup and wait for maturity.');
     }
 
-    const input = utxos[0];
-    console.log(`  Selected UTXO: ${zatoshiToZec(input.amount)} ZEC\n`);
+    // Use multiple UTXOs to have enough value (each is ~2-5k zatoshis, fee is 10000)
+    const inputs = utxos.slice(0, 5);
+    const totalInput = inputs.reduce((sum, u) => sum + u.amount, 0n);
+    console.log(`  Selected ${inputs.length} UTXOs totaling: ${zatoshiToZec(totalInput)} ZEC\n`);
 
     // For this example, send back to ourselves (transparent -> transparent)
     const destAddress = testData.transparent.address;
-    // Use 50% of the UTXO value, leaving room for fee and change
-    const paymentAmount = input.amount / 2n; // Send half to destination
+    // Use 50% of the total input value, leaving room for fee and change
+    const paymentAmount = totalInput / 2n; // Send half to destination
     const fee = 10_000n; // 0.0001 ZEC fee for transparent-only tx
 
     const payments: Payment[] = [
@@ -107,14 +110,14 @@ async function main() {
     // Print workflow summary
     printWorkflowSummary(
       'TRANSACTION SUMMARY',
-      [input],
+      inputs,
       payments.map((p) => ({ address: p.address, amount: p.amount })),
       fee
     );
 
     // Step 1: Propose transaction
     console.log('1. Proposing transaction...');
-    const pczt = proposeTransaction([input], request);
+    const pczt = proposeTransaction(inputs, request);
     console.log('   PCZT created\n');
 
     // Step 2: Prove transaction (for transparent-only, this is minimal)
@@ -127,34 +130,30 @@ async function main() {
     verifyBeforeSigning(proved, request, []);
     console.log('   Verification passed\n');
 
-    // Step 4: Get sighash for the transparent input
-    console.log('4. Getting sighash for input 0...');
-    const sighash = getSighash(proved, 0);
-    console.log(`   Sighash: ${sighash.toString('hex').slice(0, 32)}...\n`);
-
-    // Step 5: Sign the sighash with our private key (client-side)
-    console.log('5. Signing transaction (client-side)...');
-    const signature = signDER(sighash, TEST_KEYPAIR);
-    console.log(`   Signature: ${signature.toString('hex').slice(0, 32)}...\n`);
-
-    // Step 6: Append signature to PCZT
-    console.log('6. Appending signature to PCZT...');
-    const signed = appendSignature(proved, 0, signature);
-    console.log('   Signature appended\n');
+    // Step 4-6: Sign each input
+    console.log('4. Signing each input...');
+    let currentPczt = proved;
+    for (let i = 0; i < inputs.length; i++) {
+      const sighash = getSighash(currentPczt, i);
+      const signature = signDER(sighash, TEST_KEYPAIR);
+      currentPczt = appendSignature(currentPczt, i, signature);
+      console.log(`   Input ${i}: signed`);
+    }
+    console.log('');
 
     // Step 7: Finalize and extract transaction bytes
-    console.log('7. Finalizing transaction...');
-    const txBytes = finalizeAndExtract(signed);
+    console.log('5. Finalizing transaction...');
+    const txBytes = finalizeAndExtract(currentPczt);
     const txHex = txBytes.toString('hex');
     console.log(`   Transaction finalized (${txBytes.length} bytes)\n`);
 
     // Step 8: Broadcast transaction
-    console.log('8. Broadcasting transaction to network...');
+    console.log('6. Broadcasting transaction to network...');
     const txid = await client.sendRawTransaction(txHex);
     printBroadcastResult(txid, txHex);
 
-    // Mark UTXO as spent for subsequent examples
-    await markUtxosSpent([input]);
+    // Mark UTXOs as spent for subsequent examples
+    await markUtxosSpent(inputs);
 
     // Wait for internal miner to confirm the transaction
     console.log('Waiting for confirmation block (internal miner)...');

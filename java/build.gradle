@@ -1,0 +1,65 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.zcash'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JNA for FFI bindings
+    implementation 'net.java.dev.jna:jna:5.14.0'
+
+    // Bouncy Castle for secp256k1 signing
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+
+    // Set library path for native library
+    systemProperty 'jna.library.path', file('../rust/target/release').absolutePath
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            pom {
+                name = 't2z'
+                description = 'Java bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT'
+                url = 'https://github.com/gstohl/t2z'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = 'Dominik Gstöhl'
+                    }
+                }
+            }
+        }
+    }
+}
