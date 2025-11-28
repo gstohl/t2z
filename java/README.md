@@ -52,6 +52,8 @@ try (TransactionRequest request = new TransactionRequest(List.of(
 
 ## API
 
+See [root README](../README.md) for full API documentation.
+
 | Method | Description |
 |--------|-------------|
 | `new TransactionRequest(payments)` | Create payment request |

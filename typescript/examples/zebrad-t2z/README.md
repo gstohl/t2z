@@ -108,15 +108,17 @@ const signed = appendSignature(pczt, 0, signature);
 ## Troubleshooting
 
 ### "Connection refused"
-Zebra is not running. Start it with:
+Zebra is not running. Start it from repository root:
 ```bash
-cd infra/zebrad && docker-compose up -d
+cd infra/zebrad
+docker-compose up -d
 ```
 
 ### "No mature UTXOs available"
-Wait for more blocks (101 needed for coinbase maturity). Check progress:
+Wait for more blocks (101 needed for coinbase maturity). Check progress from repository root:
 ```bash
-cd infra/zebrad && docker-compose logs -f
+cd infra/zebrad
+docker-compose logs -f
 ```
 
 ### "Transaction was committed to the best chain"

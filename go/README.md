@@ -61,6 +61,8 @@ func main() {
 
 ## API
 
+See [root README](../README.md) for full API documentation.
+
 | Function | Description |
 |----------|-------------|
 | `NewTransactionRequest` | Create payment request |

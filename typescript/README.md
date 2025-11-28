@@ -58,6 +58,8 @@ const txBytes = finalizeAndExtract(signed);
 
 ## API
 
+See [root README](../README.md) for full API documentation.
+
 | Function | Description |
 |----------|-------------|
 | `new TransactionRequest(payments)` | Create payment request |

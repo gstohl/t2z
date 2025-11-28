@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+
+# Data files (generated at runtime)
+data/test-addresses.json
+data/spent-utxos.json
+
+# Keep data directory
+!data/.gitkeep
+
+# OS
+.DS_Store

@@ -56,6 +56,8 @@ pczt_transaction_request_free(request);
 
 ### Functions
 
+See [root README](../README.md) for API overview.
+
 | Function | Description |
 |----------|-------------|
 | `pczt_transaction_request_new` | Create payment request |

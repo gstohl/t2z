@@ -9,8 +9,8 @@ t2z/
 ├── rust/        # Core library with C FFI
 ├── go/          # Go bindings (CGO)
 ├── typescript/  # TypeScript bindings (koffi)
-├── kotlin/      # Kotlin bindings (planned)
-└── java/        # Java bindings (planned)
+├── java/        # Java bindings (JNA)
+└── infra/       # Docker infrastructure for regtest
 ```
 
 ## Build
