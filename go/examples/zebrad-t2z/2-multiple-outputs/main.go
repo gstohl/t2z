@@ -129,10 +129,9 @@ func main() {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript)
-	request.SetUseMainnet(true)
+	// Mainnet is the default
 	request.SetTargetHeight(2_500_000)
-	fmt.Println("Configured for mainnet branch ID")
+	fmt.Println("Using mainnet parameters")
 	fmt.Println()
 
 	// Workflow

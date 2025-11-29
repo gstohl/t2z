@@ -49,6 +49,37 @@ export enum ResultCode {
   ErrorNotImplemented = 99,
 }
 
+/**
+ * Error class for t2z operations.
+ *
+ * Includes the ResultCode for programmatic error handling.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   const proved = proveTransaction(pczt);
+ * } catch (e) {
+ *   if (e instanceof T2zError && e.code === ResultCode.ErrorProver) {
+ *     console.error('Proof generation failed:', e.message);
+ *   }
+ * }
+ * ```
+ */
+export class T2zError extends Error {
+  /** The result code from the native library */
+  public readonly code: ResultCode;
+
+  constructor(message: string, code: ResultCode) {
+    super(message);
+    this.name = 'T2zError';
+    this.code = code;
+    // Maintains proper stack trace in V8 environments
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, T2zError);
+    }
+  }
+}
+
 // Define opaque pointer type for handles
 const VoidPtr = koffi.pointer('void');
 
@@ -120,6 +151,10 @@ const pczt_free = lib.func('void pczt_free(void* pczt)');
 
 const pczt_free_bytes = lib.func('void pczt_free_bytes(void* bytes, size_t len)');
 
+const pczt_calculate_fee = lib.func(
+  'uint64_t pczt_calculate_fee(size_t num_transparent_inputs, size_t num_transparent_outputs, size_t num_orchard_outputs)'
+);
+
 // Helper: Get last error message
 function getLastError(): string {
   const buffer = Buffer.alloc(512);
@@ -132,7 +167,10 @@ function getLastError(): string {
 function checkResult(code: number, operation: string): void {
   if (code !== ResultCode.Success) {
     const errorMsg = getLastError();
-    throw new Error(`${operation} failed: ${errorMsg || `error code ${code}`}`);
+    throw new T2zError(
+      `${operation} failed: ${errorMsg || `error code ${code}`}`,
+      code as ResultCode
+    );
   }
 }
 
@@ -224,9 +262,9 @@ export class TransactionRequest {
   /**
    * Set whether to use mainnet parameters for consensus branch ID
    *
-   * By default, the library uses testnet parameters. Set this to true
-   * for mainnet or for regtest networks that use mainnet-like branch IDs
-   * (like Zebra's regtest mode).
+   * By default, the library uses mainnet parameters. Set this to false for testnet.
+   * Regtest networks (like Zebra's regtest) typically use mainnet-like branch IDs,
+   * so keep the default (true) for regtest.
    */
   setUseMainnet(useMainnet: boolean): void {
     if (this.freed) throw new Error('TransactionRequest already freed');
@@ -387,7 +425,12 @@ export function proposeTransactionWithChange(
 }
 
 /**
- * Add Orchard proofs to the PCZT
+ * Add Orchard proofs to the PCZT.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call `serialize()` before this function
+ * to create a backup that can be restored with `parse()`.
  */
 export function proveTransaction(pczt: PCZT): PCZT {
   const handleOut: any[] = [null];
@@ -434,7 +477,12 @@ export function getSighash(pczt: PCZT, index: number): Buffer {
 }
 
 /**
- * Append an external signature to the PCZT
+ * Append an external signature to the PCZT.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call `serialize()` before this function
+ * to create a backup that can be restored with `parse()`.
  */
 export function appendSignature(pczt: PCZT, index: number, signature: Buffer): PCZT {
   if (signature.length !== 64) {
@@ -448,7 +496,12 @@ export function appendSignature(pczt: PCZT, index: number, signature: Buffer): P
 }
 
 /**
- * Combine multiple PCZTs into one
+ * Combine multiple PCZTs into one.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes ALL input PCZTs, even on error.
+ * On error, all input PCZTs are invalidated and cannot be reused.
+ * If you need to retry on failure, call `serialize()` on each PCZT before
+ * this function to create backups that can be restored with `parse()`.
  */
 export function combine(pczts: PCZT[]): PCZT {
   if (pczts.length === 0) {
@@ -466,7 +519,12 @@ export function combine(pczts: PCZT[]): PCZT {
 }
 
 /**
- * Finalize the PCZT and extract transaction bytes
+ * Finalize the PCZT and extract transaction bytes.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call `serialize()` before this function
+ * to create a backup that can be restored with `parse()`.
  */
 export function finalizeAndExtract(pczt: PCZT): Buffer {
   const bytesOut: any[] = [null];
@@ -511,4 +569,40 @@ export function parse(bytes: Buffer): PCZT {
   const code = pczt_parse(bytes, bytes.length, handleOut);
   checkResult(code, 'Parse PCZT');
   return new PCZT(handleOut[0]);
+}
+
+/**
+ * Calculate the ZIP-317 transaction fee.
+ *
+ * This is a pure function that computes the fee based on transaction shape.
+ * Use this to calculate fees before building a transaction, e.g., for "send max"
+ * functionality where you need to know the fee to calculate the maximum sendable amount.
+ *
+ * @param numTransparentInputs - Number of transparent UTXOs to spend
+ * @param numTransparentOutputs - Number of transparent outputs (including change if any)
+ * @param numOrchardOutputs - Number of Orchard (shielded) outputs
+ * @returns The fee in zatoshis as a bigint
+ *
+ * @example
+ * ```typescript
+ * // Transparent-only: 1 input, 2 outputs (1 payment + 1 change)
+ * const fee = calculateFee(1, 2, 0); // Returns 10000n
+ *
+ * // Shielded: 1 input, 1 change, 1 orchard output
+ * const fee = calculateFee(1, 1, 1); // Returns 15000n
+ *
+ * // Calculate max sendable amount
+ * const totalInput = 100000000n; // 1 ZEC in zatoshis
+ * const fee = calculateFee(1, 2, 0);
+ * const maxSend = totalInput - fee; // 99990000n zatoshis
+ * ```
+ *
+ * @see {@link https://zips.z.cash/zip-0317 | ZIP-317}
+ */
+export function calculateFee(
+  numTransparentInputs: number,
+  numTransparentOutputs: number,
+  numOrchardOutputs: number
+): bigint {
+  return BigInt(pczt_calculate_fee(numTransparentInputs, numTransparentOutputs, numOrchardOutputs));
 }

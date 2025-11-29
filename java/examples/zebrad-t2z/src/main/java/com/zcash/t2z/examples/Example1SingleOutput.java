@@ -78,11 +78,9 @@ public class Example1SingleOutput {
                 ZebraClient.BlockchainInfo info = client.getBlockchainInfo();
                 System.out.println("  Current block height: " + info.blocks);
 
-                // IMPORTANT: Zebra regtest uses mainnet-like branch IDs
-                request.setUseMainnet(true);
+                // Mainnet is the default, just set target height
                 request.setTargetHeight(2_500_000);
-                System.out.println("  Target height set to 2500000 (mainnet post-NU5)");
-                System.out.println("  Using mainnet branch ID for Zebra regtest\n");
+                System.out.println("  Target height set to 2500000 (mainnet post-NU5)\n");
 
                 // Print workflow summary
                 printWorkflowSummary("TRANSACTION SUMMARY", inputs, payments, fee);

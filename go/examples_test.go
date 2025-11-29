@@ -31,8 +31,7 @@ func ExampleNewTransactionRequest() {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript zebrad examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default
 	request.SetTargetHeight(2_500_000)
 
 	fmt.Printf("Created request with %d payment(s)\n", len(request.Payments))
@@ -52,8 +51,7 @@ func ExampleProposeTransaction() {
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript zebrad examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default
 	request.SetTargetHeight(2_500_000)
 
 	// Setup test input
@@ -102,8 +100,7 @@ func ExampleSerialize() {
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default
 	request.SetTargetHeight(2_500_000)
 
 	privateKeyBytes := make([]byte, 32)
@@ -154,8 +151,7 @@ func ExampleParse() {
 		request, _ := t2z.NewTransactionRequest(payments)
 		defer request.Free()
 
-		// Configure for mainnet (like TypeScript examples)
-		request.SetUseMainnet(true)
+		// Mainnet is the default
 		request.SetTargetHeight(2_500_000)
 
 		privateKeyBytes := make([]byte, 32)
@@ -200,8 +196,7 @@ func ExampleGetSighash() {
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default
 	request.SetTargetHeight(2_500_000)
 
 	privateKeyBytes := make([]byte, 32)
@@ -251,8 +246,7 @@ func ExampleNewTransactionRequestWithTargetHeight() {
 	}
 	defer request.Free()
 
-	// TypeScript also sets mainnet for zebrad regtest
-	request.SetUseMainnet(true)
+	// Mainnet is the default (regtest uses mainnet branch IDs)
 
 	fmt.Printf("Created request with %d payment(s)\n", len(request.Payments))
 	// Output: Created request with 1 payment(s)
@@ -272,10 +266,7 @@ func ExampleTransactionRequest_SetTargetHeight() {
 	request, _ := t2z.NewTransactionRequest(payments)
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript zebrad examples)
-	request.SetUseMainnet(true)
-
-	// Set target height after creation (post-NU5 like TypeScript)
+	// Set target height after creation (post-NU5)
 	err := request.SetTargetHeight(2_500_000)
 	if err != nil {
 		log.Fatal(err)

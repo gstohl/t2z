@@ -95,6 +95,12 @@ public interface T2zLib extends Library {
 
     void pczt_free_bytes(Pointer bytes, NativeLong len);
 
+    long pczt_calculate_fee(
+        NativeLong numTransparentInputs,
+        NativeLong numTransparentOutputs,
+        NativeLong numOrchardOutputs
+    );
+
     /**
      * C-compatible payment structure for JNA.
      */

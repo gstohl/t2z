@@ -186,8 +186,9 @@ class TransactionRequest(payments: List<Payment>) : Closeable {
     /**
      * Set whether to use mainnet parameters for consensus branch ID
      *
-     * By default, the library uses testnet parameters. Set this to true
-     * for mainnet or for regtest networks that use mainnet-like branch IDs.
+     * By default, the library uses mainnet parameters. Set this to false for testnet.
+     * Regtest networks (like Zebra's regtest) typically use mainnet-like branch IDs,
+     * so keep the default (true) for regtest.
      */
     fun setUseMainnet(useMainnet: Boolean) {
         check(!closed) { "TransactionRequest already closed" }
@@ -337,7 +338,12 @@ fun proposeTransactionWithChange(
 }
 
 /**
- * Add Orchard proofs to the PCZT
+ * Add Orchard proofs to the PCZT.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call [serialize] before this function
+ * to create a backup that can be restored with [parse].
  */
 fun proveTransaction(pczt: PCZT): PCZT {
     val handleOut = PointerByReference()
@@ -389,7 +395,12 @@ fun getSighash(pczt: PCZT, index: Int): ByteArray {
 }
 
 /**
- * Append an external signature to the PCZT
+ * Append an external signature to the PCZT.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call [serialize] before this function
+ * to create a backup that can be restored with [parse].
  */
 fun appendSignature(pczt: PCZT, index: Int, signature: ByteArray): PCZT {
     require(signature.size == 64) { "Invalid signature length: expected 64, got ${signature.size}" }
@@ -401,7 +412,12 @@ fun appendSignature(pczt: PCZT, index: Int, signature: ByteArray): PCZT {
 }
 
 /**
- * Combine multiple PCZTs into one
+ * Combine multiple PCZTs into one.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes ALL input PCZTs, even on error.
+ * On error, all input PCZTs are invalidated and cannot be reused.
+ * If you need to retry on failure, call [serialize] on each PCZT before
+ * this function to create backups that can be restored with [parse].
  */
 fun combine(pczts: List<PCZT>): PCZT {
     require(pczts.isNotEmpty()) { "At least one PCZT is required" }
@@ -416,7 +432,12 @@ fun combine(pczts: List<PCZT>): PCZT {
 }
 
 /**
- * Finalize the PCZT and extract transaction bytes
+ * Finalize the PCZT and extract transaction bytes.
+ *
+ * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
+ * On error, the input PCZT is invalidated and cannot be reused.
+ * If you need to retry on failure, call [serialize] before this function
+ * to create a backup that can be restored with [parse].
  */
 fun finalizeAndExtract(pczt: PCZT): ByteArray {
     val bytesOut = PointerByReference()
@@ -459,4 +480,44 @@ fun parse(bytes: ByteArray): PCZT {
     val code = lib.pczt_parse(bytes, NativeLong(bytes.size.toLong()), handleOut)
     checkResult(code, "Parse PCZT")
     return PCZT(handleOut.value)
+}
+
+/**
+ * Calculate the ZIP-317 transaction fee.
+ *
+ * This is a pure function that computes the fee based on transaction shape.
+ * Use this to calculate fees before building a transaction, e.g., for "send max"
+ * functionality where you need to know the fee to calculate the maximum sendable amount.
+ *
+ * @param numTransparentInputs Number of transparent UTXOs to spend
+ * @param numTransparentOutputs Number of transparent outputs (including change if any)
+ * @param numOrchardOutputs Number of Orchard (shielded) outputs
+ * @return The fee in zatoshis
+ *
+ * @sample
+ * ```kotlin
+ * // Transparent-only: 1 input, 2 outputs (1 payment + 1 change)
+ * val fee = calculateFee(1, 2, 0) // Returns 10000
+ *
+ * // Shielded: 1 input, 1 change, 1 orchard output
+ * val fee = calculateFee(1, 1, 1) // Returns 15000
+ *
+ * // Calculate max sendable amount
+ * val totalInput = 100_000_000UL // 1 ZEC in zatoshis
+ * val fee = calculateFee(1, 2, 0).toULong()
+ * val maxSend = totalInput - fee // 99_990_000 zatoshis
+ * ```
+ *
+ * @see <a href="https://zips.z.cash/zip-0317">ZIP-317</a>
+ */
+fun calculateFee(
+    numTransparentInputs: Int,
+    numTransparentOutputs: Int,
+    numOrchardOutputs: Int
+): Long {
+    return lib.pczt_calculate_fee(
+        NativeLong(numTransparentInputs.toLong()),
+        NativeLong(numTransparentOutputs.toLong()),
+        NativeLong(numOrchardOutputs.toLong())
+    )
 }

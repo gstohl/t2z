@@ -116,10 +116,9 @@ async function main() {
     console.log('Creating TransactionRequest with 2 payments...');
     const request = new TransactionRequest(payments);
 
-    // Configure for Zebra regtest (uses mainnet branch IDs)
-    request.setUseMainnet(true);
+    // Mainnet is the default, just set target height
     request.setTargetHeight(2_500_000); // Post-NU5 mainnet height
-    console.log('   Using mainnet branch ID for Zebra regtest\n');
+    console.log('   Using mainnet parameters\n');
 
     printWorkflowSummary(
       'TRANSACTION SUMMARY - TWO RECIPIENTS',

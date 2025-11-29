@@ -136,18 +136,12 @@ func main() {
 	}
 	defer request.Free()
 
-	// Configure for mainnet parameters (like TypeScript zebrad examples)
-	// TypeScript: request.setUseMainnet(true)
-	// TypeScript: request.setTargetHeight(2_500_000)
-	err = request.SetUseMainnet(true)
-	if err != nil {
-		log.Fatalf("Failed to set use mainnet: %v", err)
-	}
+	// Mainnet is the default, just set target height
 	err = request.SetTargetHeight(2_500_000)
 	if err != nil {
 		log.Fatalf("Failed to set target height: %v", err)
 	}
-	fmt.Println("Configured for mainnet branch ID (target height: 2,500,000)")
+	fmt.Println("Using mainnet parameters (target height: 2,500,000)")
 	fmt.Println()
 
 	// Step 1: Propose transaction

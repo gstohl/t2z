@@ -156,6 +156,11 @@ public final class T2z {
     /**
      * Add Orchard proofs to the PCZT.
      *
+     * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
+     * On error, the input PCZT is invalidated and cannot be reused.
+     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
+     *
      * @param pczt The PCZT to prove (consumed)
      * @return A new PCZT with proofs added
      */
@@ -222,6 +227,11 @@ public final class T2z {
     /**
      * Append an external signature to the PCZT.
      *
+     * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
+     * On error, the input PCZT is invalidated and cannot be reused.
+     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
+     *
      * @param pczt      The PCZT (consumed)
      * @param index     The input index
      * @param signature 64-byte signature (r || s)
@@ -240,6 +250,11 @@ public final class T2z {
 
     /**
      * Combine multiple PCZTs into one.
+     *
+     * <p><b>IMPORTANT:</b> This function ALWAYS consumes ALL input PCZTs, even on error.
+     * On error, all input PCZTs are invalidated and cannot be reused.
+     * If you need to retry on failure, call {@link #serialize(PCZT)} on each PCZT before
+     * this function to create backups that can be restored with {@link #parse(byte[])}.</p>
      *
      * @param pczts List of PCZTs to combine (all consumed)
      * @return Combined PCZT
@@ -263,6 +278,11 @@ public final class T2z {
 
     /**
      * Finalize the PCZT and extract transaction bytes.
+     *
+     * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
+     * On error, the input PCZT is invalidated and cannot be reused.
+     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
      *
      * @param pczt The PCZT (consumed)
      * @return Transaction bytes ready for broadcast
@@ -314,5 +334,40 @@ public final class T2z {
         int code = lib.pczt_parse(bytes, new NativeLong(bytes.length), handleOut);
         checkResult(code, "Parse PCZT");
         return new PCZT(handleOut.getValue());
+    }
+
+    /**
+     * Calculate the ZIP-317 transaction fee.
+     *
+     * <p>This is a pure function that computes the fee based on transaction shape.
+     * Use this to calculate fees before building a transaction, e.g., for "send max"
+     * functionality where you need to know the fee to calculate the maximum sendable amount.</p>
+     *
+     * <p>Example usage:</p>
+     * <pre>{@code
+     * // Transparent-only: 1 input, 2 outputs (1 payment + 1 change)
+     * long fee = T2z.calculateFee(1, 2, 0); // Returns 10000
+     *
+     * // Shielded: 1 input, 1 change, 1 orchard output
+     * long fee = T2z.calculateFee(1, 1, 1); // Returns 15000
+     *
+     * // Calculate max sendable amount
+     * long totalInput = 100_000_000L; // 1 ZEC in zatoshis
+     * long fee = T2z.calculateFee(1, 2, 0);
+     * long maxSend = totalInput - fee; // 99_990_000 zatoshis
+     * }</pre>
+     *
+     * @param numTransparentInputs  Number of transparent UTXOs to spend
+     * @param numTransparentOutputs Number of transparent outputs (including change if any)
+     * @param numOrchardOutputs     Number of Orchard (shielded) outputs
+     * @return The fee in zatoshis
+     * @see <a href="https://zips.z.cash/zip-0317">ZIP-317</a>
+     */
+    public static long calculateFee(int numTransparentInputs, int numTransparentOutputs, int numOrchardOutputs) {
+        return lib.pczt_calculate_fee(
+            new NativeLong(numTransparentInputs),
+            new NativeLong(numTransparentOutputs),
+            new NativeLong(numOrchardOutputs)
+        );
     }
 }

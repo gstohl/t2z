@@ -56,6 +56,7 @@
 // Export all FFI bindings from lib.ts
 export {
   ResultCode,
+  T2zError,
   Payment,
   TransparentInput,
   TransparentOutput,
@@ -71,6 +72,7 @@ export {
   finalizeAndExtract,
   serialize,
   parse,
+  calculateFee,
 } from './lib';
 
 // Re-export signing utilities

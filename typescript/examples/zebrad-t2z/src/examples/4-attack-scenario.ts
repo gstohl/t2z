@@ -99,8 +99,7 @@ async function main() {
 
     const legitimateRequest = new TransactionRequest(legitimatePayments);
 
-    // Configure for Zebra regtest (uses mainnet branch IDs)
-    legitimateRequest.setUseMainnet(true);
+    // Mainnet is the default, just set target height
     legitimateRequest.setTargetHeight(2_500_000);
 
     console.log('1. Proposing legitimate transaction...');

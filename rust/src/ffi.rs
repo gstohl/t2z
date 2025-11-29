@@ -185,8 +185,9 @@ pub unsafe extern "C" fn pczt_transaction_request_set_target_height(
 
 /// Sets whether to use mainnet parameters for consensus branch ID
 ///
-/// By default, the library uses testnet parameters. Set this to true
-/// for mainnet or for regtest networks that use mainnet-like branch IDs.
+/// By default, the library uses mainnet parameters. Set this to false for testnet.
+/// Regtest networks (like Zebra's regtest) typically use mainnet-like branch IDs,
+/// so keep the default (true) for regtest.
 #[no_mangle]
 pub unsafe extern "C" fn pczt_transaction_request_set_use_mainnet(
     request: *mut TransactionRequestHandle,
@@ -245,7 +246,15 @@ pub unsafe extern "C" fn pczt_propose_transaction(
     }
 }
 
-/// Adds proofs to a PCZT
+/// Adds proofs to a PCZT.
+///
+/// # Ownership
+/// This function ALWAYS consumes the input PCZT handle, even on error.
+/// On success, `pczt_out` contains the new PCZT with proofs.
+/// On error, the input handle is invalidated and cannot be reused.
+///
+/// If you need to retry on failure, call `pczt_serialize()` before this
+/// function to create a backup that can be restored with `pczt_parse()`.
 #[no_mangle]
 pub unsafe extern "C" fn pczt_prove_transaction(
     pczt: *mut PcztHandle,
@@ -373,7 +382,15 @@ pub unsafe extern "C" fn pczt_get_sighash(
     }
 }
 
-/// Appends a signature to the PCZT
+/// Appends a signature to the PCZT.
+///
+/// # Ownership
+/// This function ALWAYS consumes the input PCZT handle, even on error.
+/// On success, `pczt_out` contains the new PCZT with the signature appended.
+/// On error, the input handle is invalidated and cannot be reused.
+///
+/// If you need to retry on failure, call `pczt_serialize()` before this
+/// function to create a backup that can be restored with `pczt_parse()`.
 #[no_mangle]
 pub unsafe extern "C" fn pczt_append_signature(
     pczt: *mut PcztHandle,
@@ -402,7 +419,15 @@ pub unsafe extern "C" fn pczt_append_signature(
     }
 }
 
-/// Finalizes and extracts the transaction
+/// Finalizes and extracts the transaction.
+///
+/// # Ownership
+/// This function ALWAYS consumes the input PCZT handle, even on error.
+/// On success, `tx_bytes_out` and `tx_bytes_len_out` contain the transaction bytes.
+/// On error, the input handle is invalidated and cannot be reused.
+///
+/// If you need to retry on failure, call `pczt_serialize()` before this
+/// function to create a backup that can be restored with `pczt_parse()`.
 #[no_mangle]
 pub unsafe extern "C" fn pczt_finalize_and_extract(
     pczt: *mut PcztHandle,
@@ -483,10 +508,18 @@ pub unsafe extern "C" fn pczt_serialize(
     ResultCode::Success
 }
 
-/// Combines multiple PCZTs into one
+/// Combines multiple PCZTs into one.
 ///
 /// This is useful for parallel signing workflows where different parts of the transaction
 /// are processed independently and need to be merged.
+///
+/// # Ownership
+/// This function ALWAYS consumes ALL input PCZT handles, even on error.
+/// On success, `pczt_out` contains the combined PCZT.
+/// On error, all input handles are invalidated and cannot be reused.
+///
+/// If you need to retry on failure, call `pczt_serialize()` on each PCZT before
+/// this function to create backups that can be restored with `pczt_parse()`.
 ///
 /// # Arguments
 /// * `pczts` - Array of PCZT handles to combine
@@ -552,4 +585,32 @@ pub unsafe extern "C" fn pczt_free_bytes(bytes: *mut u8, len: usize) {
     if !bytes.is_null() {
         drop(Vec::from_raw_parts(bytes, len, len));
     }
+}
+
+/// Calculates the ZIP-317 transaction fee.
+///
+/// This is a pure function with no side effects - it simply computes the fee
+/// based on the transaction shape. Use this to calculate fees before building
+/// a transaction, e.g., for "send max" functionality.
+///
+/// # Arguments
+/// * `num_transparent_inputs` - Number of transparent UTXOs to spend
+/// * `num_transparent_outputs` - Number of transparent outputs (including change)
+/// * `num_orchard_outputs` - Number of Orchard (shielded) outputs
+///
+/// # Returns
+/// The fee in zatoshis (always succeeds, no error possible)
+///
+/// # Example
+/// For a transaction with 1 input, 1 payment output, 1 change output:
+/// ```c
+/// uint64_t fee = pczt_calculate_fee(1, 2, 0); // Returns 10000
+/// ```
+#[no_mangle]
+pub extern "C" fn pczt_calculate_fee(
+    num_transparent_inputs: usize,
+    num_transparent_outputs: usize,
+    num_orchard_outputs: usize,
+) -> u64 {
+    crate::calculate_fee(num_transparent_inputs, num_transparent_outputs, num_orchard_outputs)
 }

@@ -204,11 +204,11 @@ pub struct TransactionRequest {
     /// Optional memo for the transaction
     pub memo: Option<String>,
     /// Optional target block height for consensus branch ID selection
-    /// If None, defaults to a recent testnet height
+    /// If None, defaults based on network (mainnet: ~2.5M, testnet: ~3.7M)
     pub target_height: Option<u32>,
-    /// Use mainnet parameters (default: false = testnet)
-    /// This affects the consensus branch ID embedded in the transaction
-    #[serde(default)]
+    /// Use mainnet parameters (default: true = mainnet)
+    /// Set to false for testnet. This affects the consensus branch ID embedded in the transaction.
+    #[serde(default = "default_use_mainnet")]
     pub use_mainnet: bool,
 }
 
@@ -227,13 +227,18 @@ pub struct Payment {
     pub message: Option<String>,
 }
 
+/// Default value for use_mainnet (true = mainnet)
+fn default_use_mainnet() -> bool {
+    true
+}
+
 impl TransactionRequest {
     pub fn new(payments: Vec<Payment>) -> Self {
         Self {
             payments,
             memo: None,
             target_height: None,
-            use_mainnet: false,
+            use_mainnet: true,
         }
     }
 

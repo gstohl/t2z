@@ -68,10 +68,11 @@ public final class TransactionRequest implements Closeable {
     /**
      * Set whether to use mainnet parameters for consensus branch ID.
      *
-     * <p>By default, the library uses testnet parameters. Set this to true
-     * for mainnet or for regtest networks that use mainnet-like branch IDs.</p>
+     * <p>By default, the library uses mainnet parameters. Set this to false for testnet.
+     * Regtest networks (like Zebra's regtest) typically use mainnet-like branch IDs,
+     * so keep the default (true) for regtest.</p>
      *
-     * @param useMainnet true for mainnet parameters
+     * @param useMainnet true for mainnet/regtest, false for testnet
      */
     public void setUseMainnet(boolean useMainnet) {
         checkNotClosed();

@@ -230,6 +230,33 @@ type TransparentInput struct {
 	ScriptPubKey []byte
 }
 
+// NewTransparentInput creates a new TransparentInput with validation.
+//
+// Parameters:
+//   - pubkey: 33-byte compressed secp256k1 public key
+//   - txid: 32-byte transaction ID
+//   - vout: Output index in the previous transaction
+//   - amount: Amount in zatoshis
+//   - scriptPubKey: The scriptPubKey of the UTXO
+//
+// Returns an error if any parameter is invalid.
+func NewTransparentInput(pubkey []byte, txid [32]byte, vout uint32, amount uint64, scriptPubKey []byte) (*TransparentInput, error) {
+	if len(pubkey) != 33 {
+		return nil, fmt.Errorf("invalid pubkey length: expected 33, got %d", len(pubkey))
+	}
+	if len(scriptPubKey) == 0 {
+		return nil, errors.New("scriptPubKey must not be empty")
+	}
+
+	return &TransparentInput{
+		Pubkey:       pubkey,
+		TxID:         txid,
+		Vout:         vout,
+		Amount:       amount,
+		ScriptPubKey: scriptPubKey,
+	}, nil
+}
+
 // serializeTransparentInputs converts Go inputs to the binary format expected by Rust
 func serializeTransparentInputs(inputs []TransparentInput) []byte {
 	var buf []byte
@@ -366,6 +393,11 @@ func ProposeTransactionWithChange(inputs []TransparentInput, request *Transactio
 //
 // This operation can be performed in parallel with signing operations.
 //
+// IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
+// On error, the input PCZT is invalidated and cannot be reused.
+// If you need to retry on failure, call Serialize() before this function
+// to create a backup that can be restored with Parse().
+//
 // Returns a new PCZT with proofs added.
 func ProveTransaction(pczt *PCZT) (*PCZT, error) {
 	if pczt == nil || pczt.handle == nil {
@@ -422,6 +454,11 @@ func GetSighash(pczt *PCZT, inputIndex uint) ([32]byte, error) {
 //
 // The implementation verifies that the signature is valid for the input being spent.
 //
+// IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
+// On error, the input PCZT is invalidated and cannot be reused.
+// If you need to retry on failure, call Serialize() before this function
+// to create a backup that can be restored with Parse().
+//
 // Parameters:
 //   - pczt: The PCZT to add the signature to
 //   - inputIndex: The index of the input being signed
@@ -457,6 +494,11 @@ func AppendSignature(pczt *PCZT, inputIndex uint, signature [64]byte) (*PCZT, er
 //
 // This performs final non-contextual verification and produces the raw
 // transaction bytes ready to be broadcast to the Zcash network.
+//
+// IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
+// On error, the input PCZT is invalidated and cannot be reused.
+// If you need to retry on failure, call Serialize() before this function
+// to create a backup that can be restored with Parse().
 //
 // Returns the transaction bytes or an error.
 func FinalizeAndExtract(pczt *PCZT) ([]byte, error) {
@@ -552,7 +594,10 @@ func Serialize(pczt *PCZT) ([]byte, error) {
 // This is useful for parallel signing workflows where different parts of the
 // transaction are processed independently and need to be merged.
 //
-// All input PCZTs are consumed by this function.
+// IMPORTANT: This function ALWAYS consumes ALL input PCZTs, even on error.
+// On error, all input PCZTs are invalidated and cannot be reused.
+// If you need to retry on failure, call Serialize() on each PCZT before
+// this function to create backups that can be restored with Parse().
 //
 // Parameters:
 //   - pczts: Array of PCZTs to combine
@@ -687,12 +732,12 @@ func (r *TransactionRequest) SetTargetHeight(height uint32) error {
 
 // SetUseMainnet sets whether to use mainnet parameters for consensus branch ID.
 //
-// By default, the library uses testnet parameters. Set this to true
-// for mainnet or for regtest networks that use mainnet-like branch IDs
-// (like Zebra's regtest mode).
+// By default, the library uses mainnet parameters. Set this to false for testnet.
+// Regtest networks (like Zebra's regtest) typically use mainnet-like branch IDs,
+// so keep the default (true) for regtest.
 //
 // Parameters:
-//   - useMainnet: True to use mainnet parameters, false for testnet
+//   - useMainnet: True for mainnet/regtest, false for testnet
 func (r *TransactionRequest) SetUseMainnet(useMainnet bool) error {
 	if r == nil || r.handle == nil {
 		return errors.New("invalid transaction request")
@@ -727,4 +772,39 @@ func NewTransactionRequestWithTargetHeight(payments []Payment, targetHeight uint
 	}
 
 	return req, nil
+}
+
+// CalculateFee calculates the ZIP-317 transaction fee.
+//
+// This is a pure function that computes the fee based on transaction shape.
+// Use this to calculate fees before building a transaction, e.g., for "send max"
+// functionality where you need to know the fee to calculate the maximum sendable amount.
+//
+// Parameters:
+//   - numTransparentInputs: Number of transparent UTXOs to spend
+//   - numTransparentOutputs: Number of transparent outputs (including change if any)
+//   - numOrchardOutputs: Number of Orchard (shielded) outputs
+//
+// Returns the fee in zatoshis.
+//
+// Example:
+//
+//	// Transparent-only: 1 input, 2 outputs (1 payment + 1 change)
+//	fee := CalculateFee(1, 2, 0) // Returns 10000
+//
+//	// Shielded: 1 input, 1 change, 1 orchard output
+//	fee := CalculateFee(1, 1, 1) // Returns 15000
+//
+//	// Calculate max sendable amount
+//	totalInput := uint64(100000000) // 1 ZEC
+//	fee := CalculateFee(1, 2, 0)    // 10000 zatoshis
+//	maxSend := totalInput - fee     // 99990000 zatoshis
+//
+// See ZIP-317: https://zips.z.cash/zip-0317
+func CalculateFee(numTransparentInputs, numTransparentOutputs, numOrchardOutputs int) uint64 {
+	return uint64(C.pczt_calculate_fee(
+		C.uintptr_t(numTransparentInputs),
+		C.uintptr_t(numTransparentOutputs),
+		C.uintptr_t(numOrchardOutputs),
+	))
 }

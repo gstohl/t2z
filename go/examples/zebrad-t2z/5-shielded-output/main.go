@@ -135,9 +135,8 @@ func main() {
 	}
 	defer request.Free()
 
-	request.SetUseMainnet(true)
 	request.SetTargetHeight(2_500_000)
-	fmt.Println("Configured for mainnet branch ID (target height: 2,500,000)")
+	fmt.Println("Using mainnet parameters (target height: 2,500,000)")
 	fmt.Println()
 
 	// Workflow

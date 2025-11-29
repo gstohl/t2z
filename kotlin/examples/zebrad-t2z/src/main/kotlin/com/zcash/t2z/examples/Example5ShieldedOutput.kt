@@ -50,9 +50,9 @@ fun main() = runBlocking {
 
         println("Creating TransactionRequest for shielded output...")
         TransactionRequest(payments).use { request ->
-            request.setUseMainnet(true)
+            // Mainnet is the default, just set target height
             request.setTargetHeight(2_500_000)
-            println("   Using mainnet branch ID for Zebra regtest\n")
+            println("   Using mainnet parameters\n")
 
             printWorkflowSummary(
                 "TRANSACTION SUMMARY - T→Z SHIELDED",

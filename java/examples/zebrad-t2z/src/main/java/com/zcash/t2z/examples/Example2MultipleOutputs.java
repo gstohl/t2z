@@ -81,9 +81,9 @@ public class Example2MultipleOutputs {
 
             System.out.println("Creating TransactionRequest with 2 payments...");
             try (TransactionRequest request = new TransactionRequest(payments)) {
-                request.setUseMainnet(true);
+                // Mainnet is the default, just set target height
                 request.setTargetHeight(2_500_000);
-                System.out.println("   Using mainnet branch ID for Zebra regtest\n");
+                System.out.println("   Using mainnet parameters\n");
 
                 printWorkflowSummary("TRANSACTION SUMMARY - TWO RECIPIENTS", inputs, payments, fee);
 

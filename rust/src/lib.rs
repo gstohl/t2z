@@ -19,6 +19,65 @@ use zcash_address::{ZcashAddress, unified};
 use zcash_transparent::address::TransparentAddress;
 use rand_core::OsRng;
 
+/// ZIP-317 marginal fee per logical action (5000 zatoshis = 0.00005 ZEC)
+pub const ZIP317_MARGINAL_FEE: u64 = 5_000;
+
+/// ZIP-317 grace actions (minimum actions charged to encourage small transactions)
+pub const ZIP317_GRACE_ACTIONS: usize = 2;
+
+/// Calculates the ZIP-317 transaction fee.
+///
+/// This implements the standard ZIP-317 fee calculation:
+/// ```text
+/// fee = marginal_fee * max(grace_actions, logical_actions)
+/// ```
+///
+/// Where:
+/// - `marginal_fee` = 5000 zatoshis (0.00005 ZEC)
+/// - `grace_actions` = 2 (minimum actions to encourage small transactions)
+/// - For shielded: `logical_actions = transparent_actions + orchard_actions`
+/// - For transparent-only: `logical_actions = max(inputs, outputs)`
+/// - Orchard actions are padded to even numbers (bundling optimization)
+///
+/// # Arguments
+/// * `num_transparent_inputs` - Number of transparent UTXOs being spent
+/// * `num_transparent_outputs` - Number of transparent outputs (including change if any)
+/// * `num_orchard_outputs` - Number of Orchard (shielded) outputs
+///
+/// # Returns
+/// The calculated fee in zatoshis
+///
+/// # Example
+/// ```
+/// use t2z::calculate_fee;
+///
+/// // Transparent-only: 1 input, 2 outputs (1 payment + 1 change)
+/// assert_eq!(calculate_fee(1, 2, 0), 10_000); // 2 actions * 5000
+///
+/// // Shielded: 1 input, 1 change output, 1 orchard output
+/// assert_eq!(calculate_fee(1, 1, 1), 15_000); // (1 transparent + 2 orchard) * 5000
+/// ```
+///
+/// See ZIP-317: <https://zips.z.cash/zip-0317>
+pub fn calculate_fee(
+    num_transparent_inputs: usize,
+    num_transparent_outputs: usize,
+    num_orchard_outputs: usize,
+) -> u64 {
+    let logical_actions = if num_orchard_outputs > 0 {
+        // Shielded transaction
+        // Orchard actions are padded to even numbers for bundling
+        let orchard_actions = ((num_orchard_outputs + 1) / 2) * 2;
+        let transparent_actions = std::cmp::max(num_transparent_inputs, num_transparent_outputs);
+        transparent_actions + orchard_actions
+    } else {
+        // Transparent-only
+        std::cmp::max(num_transparent_inputs, num_transparent_outputs)
+    };
+
+    ZIP317_MARGINAL_FEE * std::cmp::max(ZIP317_GRACE_ACTIONS, logical_actions) as u64
+}
+
 /// Proposes a transaction by creating a PCZT from transparent inputs and a transaction request.
 ///
 /// This implements the Creator, Constructor, and IO Finalizer roles.
@@ -153,40 +212,20 @@ fn propose_transaction_with_network<P: Parameters>(
     }
 
     // Calculate change if needed
-    // Total input value
     let total_input: u64 = inputs.iter().map(|i| i.amount).sum();
-
-    // Total requested output value
     let total_output: u64 = transaction_request.total_amount();
 
-    // Estimate fee based on ZIP 317 standard
-    // The Builder calculates actual fees dynamically, so our estimate must match
-    // ZIP 317: fee = 5000 * (transparent_actions + orchard_actions)
-    // where orchard_actions are padded to even numbers
-    let has_shielded = transaction_request.has_shielded_outputs();
-    let num_inputs = inputs.len();
-    let estimated_fee: u64 = if has_shielded {
-        // Count Orchard outputs
-        let num_orchard_outputs = transaction_request.payments.iter()
-            .filter(|p| p.is_unified())
-            .count();
-        // Orchard actions are padded to even numbers
-        let orchard_actions = ((num_orchard_outputs + 1) / 2) * 2;
-        // Count transparent payment outputs (non-unified addresses) + 1 for change
-        let num_transparent_payment_outputs = transaction_request.payments.iter()
-            .filter(|p| !p.is_unified())
-            .count();
-        let transparent_outputs = num_transparent_payment_outputs + 1; // +1 for change
-        let transparent_actions = std::cmp::max(num_inputs, transparent_outputs);
-        // Total fee
-        5_000 * (transparent_actions + orchard_actions) as u64
-    } else {
-        // Transparent-only: fee based on inputs and outputs
-        let num_payment_outputs = transaction_request.payments.len();
-        let num_outputs = num_payment_outputs + 1; // +1 for change
-        let logical_actions = std::cmp::max(num_inputs, num_outputs);
-        5_000 * logical_actions as u64
-    };
+    // Count outputs for fee calculation (assuming change will be needed)
+    let num_orchard_outputs = transaction_request.payments.iter()
+        .filter(|p| p.is_unified())
+        .count();
+    let num_transparent_payment_outputs = transaction_request.payments.iter()
+        .filter(|p| !p.is_unified())
+        .count();
+    // +1 for change output (we assume change is needed for fee calculation)
+    let num_transparent_outputs = num_transparent_payment_outputs + 1;
+
+    let estimated_fee = calculate_fee(inputs.len(), num_transparent_outputs, num_orchard_outputs);
 
     // If we have change (inputs > outputs + fee), add a change output
     if total_input > total_output + estimated_fee {

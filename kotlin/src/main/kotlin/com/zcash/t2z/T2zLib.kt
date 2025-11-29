@@ -135,6 +135,12 @@ interface T2zLib : Library {
     fun pczt_free(pczt: Pointer?)
 
     fun pczt_free_bytes(bytes: Pointer?, len: NativeLong)
+
+    fun pczt_calculate_fee(
+        numTransparentInputs: NativeLong,
+        numTransparentOutputs: NativeLong,
+        numOrchardOutputs: NativeLong
+    ): Long
 }
 
 /**

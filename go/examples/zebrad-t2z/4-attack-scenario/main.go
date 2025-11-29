@@ -114,7 +114,6 @@ func main() {
 	legitimateRequest, _ := t2z.NewTransactionRequest(legitimatePayments)
 	defer legitimateRequest.Free()
 
-	legitimateRequest.SetUseMainnet(true)
 	legitimateRequest.SetTargetHeight(2_500_000)
 
 	fmt.Println("1. Proposing legitimate transaction...")

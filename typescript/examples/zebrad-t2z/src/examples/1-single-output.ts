@@ -95,17 +95,11 @@ async function main() {
     const info = await client.getBlockchainInfo();
     console.log(`  Current block height: ${info.blocks}`);
 
-    // IMPORTANT: Zebra regtest uses mainnet-like branch IDs, not testnet
-    // We need to use mainnet parameters for the consensus branch ID
-    request.setUseMainnet(true);
-
-    // When using mainnet parameters, we must use a height where NU5 is active
-    // (NU5 activated on mainnet at block 1,687,104)
-    // We use 2,500,000 as a safe post-NU5 height
+    // Mainnet is the default (Zebra regtest uses mainnet-like branch IDs)
+    // Set target height where NU5 is active (activated at block 1,687,104)
     const targetHeight = 2_500_000;
     request.setTargetHeight(targetHeight);
-    console.log(`  Target height set to ${targetHeight} (mainnet post-NU5)`);
-    console.log('  Using mainnet branch ID for Zebra regtest\n');
+    console.log(`  Target height set to ${targetHeight} (mainnet post-NU5)\n`);
 
     // Print workflow summary
     printWorkflowSummary(

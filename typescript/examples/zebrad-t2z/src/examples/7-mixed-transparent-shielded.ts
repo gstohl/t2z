@@ -107,10 +107,9 @@ async function main() {
     console.log('Creating TransactionRequest with mixed outputs...');
     const request = new TransactionRequest(payments);
 
-    // Configure for Zebra regtest (uses mainnet branch IDs)
-    request.setUseMainnet(true);
+    // Mainnet is the default, just set target height
     request.setTargetHeight(2_500_000);
-    console.log('   Using mainnet branch ID for Zebra regtest\n');
+    console.log('   Using mainnet parameters\n');
 
     printWorkflowSummary(
       'TRANSACTION SUMMARY - MIXED T+Z',

@@ -46,7 +46,7 @@ fun main() = runBlocking {
 
         println("Creating TransactionRequest with 2 outputs...")
         TransactionRequest(payments).use { request ->
-            request.setUseMainnet(true)
+            // Mainnet is the default, just set target height
             request.setTargetHeight(2_500_000)
 
             printWorkflowSummary(

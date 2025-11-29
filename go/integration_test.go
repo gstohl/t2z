@@ -97,14 +97,7 @@ func TestFullTransparentWorkflow(t *testing.T) {
 	}
 	defer request.Free()
 
-	// Configure for mainnet parameters (like TypeScript zebrad examples)
-	// TypeScript: request.setUseMainnet(true)
-	err = request.SetUseMainnet(true)
-	if err != nil {
-		t.Fatalf("Failed to set use mainnet: %v", err)
-	}
-
-	// TypeScript: request.setTargetHeight(2_500_000)
+	// Mainnet is the default, just set target height
 	err = request.SetTargetHeight(2_500_000)
 	if err != nil {
 		t.Fatalf("Failed to set target height: %v", err)
@@ -204,8 +197,7 @@ func TestPCZTSerialization(t *testing.T) {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default, just set target height
 	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
@@ -286,8 +278,7 @@ func TestGetSighashInvalidIndex(t *testing.T) {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default, just set target height
 	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
@@ -343,8 +334,7 @@ func TestVerifyBeforeSigning(t *testing.T) {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default, just set target height
 	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)
@@ -405,8 +395,7 @@ func TestAppendSignatureInvalidIndex(t *testing.T) {
 	}
 	defer request.Free()
 
-	// Configure for mainnet (like TypeScript examples)
-	request.SetUseMainnet(true)
+	// Mainnet is the default, just set target height
 	request.SetTargetHeight(2_500_000)
 
 	pczt, err := ProposeTransaction(inputs, request)

@@ -74,11 +74,9 @@ fun main() = runBlocking {
             val info = client.getBlockchainInfo()
             println("  Current block height: ${info.blocks}")
 
-            // IMPORTANT: Zebra regtest uses mainnet-like branch IDs
-            request.setUseMainnet(true)
+            // Mainnet is the default, just set target height
             request.setTargetHeight(2_500_000)
-            println("  Target height set to 2500000 (mainnet post-NU5)")
-            println("  Using mainnet branch ID for Zebra regtest\n")
+            println("  Target height set to 2500000 (mainnet post-NU5)\n")
 
             // Print workflow summary
             printWorkflowSummary(

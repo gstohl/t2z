@@ -135,7 +135,6 @@ func main() {
 	}
 	defer request.Free()
 
-	request.SetUseMainnet(true)
 	request.SetTargetHeight(2_500_000)
 
 	// Workflow
