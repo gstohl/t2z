@@ -49,12 +49,14 @@ public class Example1SingleOutput {
             for (TransparentInput utxo : allUtxos) {
                 inputs.add(utxo);
                 totalInput += utxo.getAmount();
-                long fee = estimateFee(inputs.size());
+                // Calculate fee: N inputs, 2 outputs (1 payment + 1 change), 0 orchard
+                long fee = T2z.calculateFee(inputs.size(), 2, 0);
                 // Need enough for fee + at least 1000 zatoshi payment
                 if (totalInput > fee + 1000) break;
             }
 
-            long fee = estimateFee(inputs.size());
+            // Calculate fee: N inputs, 2 outputs (1 payment + 1 change), 0 orchard
+            long fee = T2z.calculateFee(inputs.size(), 2, 0);
 
             if (totalInput <= fee) {
                 throw new Exception("Not enough funds: have " + totalInput + " zatoshis, need " + fee + " for fee. Wait for more blocks.");
@@ -128,18 +130,12 @@ public class Example1SingleOutput {
                 markUtxosSpent(inputs);
 
                 // Wait for confirmation
-                System.out.println("Waiting for confirmation block (internal miner)...");
+                System.out.println("Waiting for confirmation...");
                 int currentHeight = client.getBlockchainInfo().blocks;
-                System.out.println("  Block height: " + currentHeight);
                 client.waitForBlocks(currentHeight + 1, 60000);
-                int newHeight = client.getBlockchainInfo().blocks;
-                System.out.println("  New block height: " + newHeight);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("Transaction confirmed in the blockchain.");
-                System.out.println("  TXID: " + txid + "\n");
-
-                System.out.println("EXAMPLE 1 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid + "\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 1 FAILED", e);
@@ -149,11 +145,4 @@ public class Example1SingleOutput {
         }
     }
 
-    /**
-     * Estimate fee based on number of inputs.
-     * ZIP-317: max(2, actions) * 5000, actions = inputs + 2 outputs
-     */
-    private static long estimateFee(int numInputs) {
-        return Math.max(2, numInputs + 2) * 5000L;
-    }
 }

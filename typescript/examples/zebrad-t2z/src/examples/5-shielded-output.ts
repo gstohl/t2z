@@ -28,6 +28,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
 } from 't2z';
 
@@ -79,8 +80,9 @@ async function main() {
     console.log(`Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n`);
 
     // Create shielded payment (use 50% of UTXO for payment)
+    // Calculate fee: 1 input, 1 transparent change, 1 orchard output
+    const fee = calculateFee(1, 1, 1);
     const paymentAmount = input.amount / 2n;
-    const fee = 15_000n; // ZIP-317 fee for T→Z (includes Orchard action cost)
 
     const payments: Payment[] = [
       {
@@ -148,24 +150,13 @@ async function main() {
     await markUtxosSpent([input]);
 
     // Wait for confirmation
-    console.log('Waiting for confirmation (internal miner)...');
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
     await client.waitForBlocks(currentHeight + 1, 60000);
-    console.log('   Transaction confirmed!\n');
+    console.log('   Confirmed!\n');
 
-    console.log('='.repeat(70));
-    console.log('  T→Z TRANSACTION SUCCESSFUL');
-    console.log('='.repeat(70));
-    console.log(`\nTXID: ${txid}`);
-    console.log(`\nWhat happened:`);
-    console.log(`  - Transparent input: ${zatoshiToZec(input.amount)} ZEC`);
-    console.log(`  - Shielded output: ${zatoshiToZec(paymentAmount)} ZEC`);
-    console.log(`  - Change: returned to transparent address`);
-    console.log(`  - Fee: ${zatoshiToZec(fee)} ZEC\n`);
-    console.log('The shielded output is now private - only the recipient');
-    console.log('with the viewing key can see the amount and memo.\n');
-
-    console.log('EXAMPLE 5 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}`);
+    console.log(`   Shielded ${zatoshiToZec(paymentAmount)} ZEC to Orchard\n`);
 
     // Cleanup
     request.free();

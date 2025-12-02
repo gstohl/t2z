@@ -180,36 +180,7 @@ public class Example4AttackScenario {
                 proved.close();
             }
 
-            // =================================================================
-            // Security Lessons
-            // =================================================================
-            System.out.println("=".repeat(70));
-            System.out.println("  SECURITY LESSONS");
-            System.out.println("=".repeat(70));
-            System.out.println();
-
-            System.out.println("KEY TAKEAWAYS:");
-            System.out.println();
-            System.out.println("1. ALWAYS call verifyBeforeSigning() before signing a PCZT");
-            System.out.println("2. Never sign a PCZT from an untrusted source without verification");
-            System.out.println("3. The verification checks:");
-            System.out.println("   - Payment outputs match your transaction request");
-            System.out.println("   - Change outputs match expected values");
-            System.out.println("   - Fees are reasonable");
-            System.out.println("4. Hardware wallets should implement this verification");
-            System.out.println("5. In multi-party workflows, each signer should verify");
-            System.out.println();
-
-            System.out.println("REAL-WORLD SCENARIOS WHERE THIS MATTERS:");
-            System.out.println();
-            System.out.println("- Hardware wallet signing (PCZT comes from computer)");
-            System.out.println("- Multi-sig wallets (PCZT passed between co-signers)");
-            System.out.println("- Payment processors (PCZT from merchant/customer)");
-            System.out.println("- Any scenario where PCZT crosses trust boundaries");
-            System.out.println();
-
-            System.out.println("EXAMPLE 4 COMPLETED - Security Features Demonstrated!");
-            System.out.println();
+            System.out.println("KEY TAKEAWAY: Always call verifyBeforeSigning() before signing!\n");
 
         } catch (Exception e) {
             printError("EXAMPLE 4 FAILED", e);

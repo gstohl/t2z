@@ -57,7 +57,8 @@ public class Example7MixedOutputs {
 
             long totalInput = 0;
             List<TransparentInput> inputs = new ArrayList<>();
-            long fee = 30_000L; // Higher fee for mixed outputs
+            // Calculate fee: 1 input, 2 transparent (1 payment + 1 change), 1 orchard
+            long fee = T2z.calculateFee(1, 2, 1);
 
             for (TransparentInput utxo : allUtxos) {
                 inputs.add(utxo);
@@ -135,32 +136,13 @@ public class Example7MixedOutputs {
 
                 markUtxosSpent(inputs);
 
-                System.out.println("Waiting for confirmation (internal miner)...");
+                System.out.println("Waiting for confirmation...");
                 int currentHeight = client.getBlockchainInfo().blocks;
                 client.waitForBlocks(currentHeight + 1, 60000);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("=".repeat(70));
-                System.out.println("  MIXED OUTPUTS TRANSACTION - SUCCESS");
-                System.out.println("=".repeat(70));
-                System.out.println("\nTXID: " + txid);
-                System.out.println("\nTransaction breakdown:");
-                System.out.println("  - Transparent input: " + zatoshiToZec(totalInput) + " ZEC");
-                System.out.println("  - Transparent output: " + zatoshiToZec(transparentPayment) + " ZEC (publicly visible)");
-                System.out.println("  - Shielded output: " + zatoshiToZec(shieldedPayment) + " ZEC (private)");
-                System.out.println("  - Change: ~" + zatoshiToZec(totalInput - transparentPayment - shieldedPayment - fee) + " ZEC");
-                System.out.println("  - Fee: " + zatoshiToZec(fee) + " ZEC");
-                System.out.println("\nPrivacy analysis:");
-                System.out.println("   - Transparent recipient: amount and address are PUBLIC");
-                System.out.println("   - Shielded recipient: amount and address are PRIVATE");
-                System.out.println("   - Observer can see: input amount, transparent output");
-                System.out.println("   - Observer cannot see: shielded amount, shielded recipient");
-                System.out.println("\nUse cases for mixed transactions:");
-                System.out.println("   - Pay merchant (transparent) + save remainder (shielded)");
-                System.out.println("   - Exchange withdrawal (transparent) + personal wallet (shielded)");
-                System.out.println("   - Tax-reportable payment + private savings\n");
-
-                System.out.println("EXAMPLE 7 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid);
+                System.out.println("   Mixed: " + zatoshiToZec(transparentPayment) + " ZEC transparent + " + zatoshiToZec(shieldedPayment) + " ZEC shielded\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 7 FAILED", e);

@@ -37,7 +37,8 @@ fun main() = runBlocking {
 
         // Consolidate to single output (back to ourselves)
         val destAddress = testData.transparent.address
-        val fee = 10_000UL
+        // Calculate fee: N inputs, 1 output, 0 orchard
+        val fee = calculateFee(inputs.size, 1, 0).toULong()
         val paymentAmount = totalInput - fee
 
         val payments = listOf(Payment(address = destAddress, amount = paymentAmount))
@@ -90,16 +91,10 @@ fun main() = runBlocking {
             println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
             client.waitForBlocks(currentHeight + 1, 60000)
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("=".repeat(70))
-            println("  CONSOLIDATION COMPLETE")
-            println("=".repeat(70))
-            println("\n${inputs.size} UTXOs consolidated into 1")
-            println("  Before: ${inputs.size} UTXOs")
-            println("  After: 1 UTXO of ${zatoshiToZec(paymentAmount)} ZEC\n")
-
-            println("EXAMPLE 3 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid")
+            println("   ${inputs.size} UTXOs consolidated into 1\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 3 FAILED", e)

@@ -57,11 +57,13 @@ public class Example2MultipleOutputs {
             for (TransparentInput utxo : allUtxos) {
                 inputs.add(utxo);
                 totalInput += utxo.getAmount();
-                long fee = estimateFee(inputs.size(), 2);
+                // Calculate fee: N inputs, 3 outputs (2 payments + 1 change), 0 orchard
+                long fee = T2z.calculateFee(inputs.size(), 3, 0);
                 if (totalInput > fee + 2000) break;
             }
 
-            long fee = estimateFee(inputs.size(), 2);
+            // Calculate fee: N inputs, 3 outputs (2 payments + 1 change), 0 orchard
+            long fee = T2z.calculateFee(inputs.size(), 3, 0);
 
             if (totalInput <= fee) {
                 throw new Exception("Not enough funds.");
@@ -125,16 +127,12 @@ public class Example2MultipleOutputs {
 
                 markUtxosSpent(inputs);
 
-                System.out.println("Waiting for confirmation (internal miner)...");
+                System.out.println("Waiting for confirmation...");
                 int currentHeight = client.getBlockchainInfo().blocks;
                 client.waitForBlocks(currentHeight + 1, 60000);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("Transaction confirmed in the blockchain.");
-                System.out.println("  TXID: " + txid);
-                System.out.println("  Sent to 2 recipients + change\n");
-
-                System.out.println("EXAMPLE 2 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid + "\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 2 FAILED", e);
@@ -144,7 +142,4 @@ public class Example2MultipleOutputs {
         }
     }
 
-    private static long estimateFee(int numInputs, int numOutputs) {
-        return Math.max(2, numInputs + numOutputs + 1) * 5000L;
-    }
 }

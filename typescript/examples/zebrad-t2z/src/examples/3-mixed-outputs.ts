@@ -28,6 +28,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
   TransparentInput,
 } from 't2z';
@@ -91,7 +92,8 @@ async function main() {
     console.log(`Using ${inputs.length} inputs totaling ${zatoshiToZec(inputTotal)} ZEC\n`);
 
     // Create a single output back to ourselves (consolidation)
-    const fee = 10_000n; // 0.0001 ZEC fee
+    // Calculate fee: N inputs, 1 output, 0 orchard
+    const fee = calculateFee(inputs.length, 1, 0);
     const outputAmount = inputTotal - fee;
 
     const payments: Payment[] = [
@@ -156,25 +158,14 @@ async function main() {
     // Mark UTXOs as spent for subsequent examples
     await markUtxosSpent(inputs);
 
-    // Wait for internal miner to confirm
-    console.log('Waiting for confirmation (internal miner)...');
+    // Wait for confirmation
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
     await client.waitForBlocks(currentHeight + 1, 60000);
-    console.log('   Transaction confirmed!\n');
+    console.log('   Confirmed!\n');
 
-    // Transaction summary (Zebra doesn't return decoded tx fields)
-    console.log('Transaction Analysis:');
-    console.log(`   TXID: ${txid}`);
-    console.log(`   Inputs consolidated: ${inputs.length}`);
-    console.log(`   Output UTXOs: 1 (consolidation)`);
-    console.log(`   Fee paid: ${zatoshiToZec(fee)} ZEC`);
-    console.log(`   Result: ${inputs.length} UTXOs -> 1 UTXO\n`);
-
-    console.log('Key Takeaway:');
-    console.log('   Multiple UTXOs can be combined into fewer outputs.');
-    console.log('   Each input requires its own sighash and signature.\n');
-
-    console.log('EXAMPLE 3 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}`);
+    console.log(`   ${inputs.length} UTXOs consolidated into 1\n`);
 
     // Cleanup
     request.free();

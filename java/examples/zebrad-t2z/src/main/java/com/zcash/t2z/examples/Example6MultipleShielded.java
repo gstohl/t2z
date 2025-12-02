@@ -52,7 +52,8 @@ public class Example6MultipleShielded {
 
             long totalInput = 0;
             List<TransparentInput> inputs = new ArrayList<>();
-            long fee = 40_000L; // Higher fee for multiple Orchard actions
+            // Calculate fee: 1 input, 1 transparent change, 2 orchard outputs
+            long fee = T2z.calculateFee(1, 1, 2);
 
             for (TransparentInput utxo : allUtxos) {
                 inputs.add(utxo);
@@ -129,27 +130,13 @@ public class Example6MultipleShielded {
 
                 markUtxosSpent(inputs);
 
-                System.out.println("Waiting for confirmation (internal miner)...");
+                System.out.println("Waiting for confirmation...");
                 int currentHeight = client.getBlockchainInfo().blocks;
                 client.waitForBlocks(currentHeight + 1, 60000);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("=".repeat(70));
-                System.out.println("  MULTIPLE SHIELDED OUTPUTS - SUCCESS");
-                System.out.println("=".repeat(70));
-                System.out.println("\nTXID: " + txid);
-                System.out.println("\nTransaction breakdown:");
-                System.out.println("  - Transparent input: " + zatoshiToZec(totalInput) + " ZEC");
-                System.out.println("  - Shielded output 1: " + zatoshiToZec(payment1Amount) + " ZEC");
-                System.out.println("  - Shielded output 2: " + zatoshiToZec(payment2Amount) + " ZEC");
-                System.out.println("  - Change: ~" + zatoshiToZec(totalInput - payment1Amount - payment2Amount - fee) + " ZEC");
-                System.out.println("  - Fee: " + zatoshiToZec(fee) + " ZEC");
-                System.out.println("\nPrivacy achieved:");
-                System.out.println("   - Both outputs are in the Orchard shielded pool");
-                System.out.println("   - Amounts are hidden from public view");
-                System.out.println("   - Only recipients can see their incoming funds\n");
-
-                System.out.println("EXAMPLE 6 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid);
+                System.out.println("   Shielded to 2 Orchard recipients\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 6 FAILED", e);

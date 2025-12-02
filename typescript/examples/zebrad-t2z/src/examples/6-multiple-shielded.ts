@@ -28,6 +28,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
 } from 't2z';
 
@@ -82,11 +83,8 @@ async function main() {
     console.log(`Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n`);
 
     // Create two shielded payments
-    // Split the available funds (minus fee) between two recipients
-    // ZIP-317 fee for 2 Orchard outputs + transparent change
-    // With 2 Orchard outputs, there's a dummy output for padding to even,
-    // plus potential change handling adds complexity
-    const fee = 40_000n; // Higher fee for multiple Orchard actions
+    // Calculate fee: 1 input, 1 transparent change, 2 orchard outputs
+    const fee = calculateFee(1, 1, 2);
     const availableForPayments = input.amount - fee;
     const payment1Amount = availableForPayments / 3n; // ~33%
     const payment2Amount = availableForPayments / 3n; // ~33%
@@ -165,28 +163,13 @@ async function main() {
     await markUtxosSpent([input]);
 
     // Wait for confirmation
-    console.log('Waiting for confirmation (internal miner)...');
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
     await client.waitForBlocks(currentHeight + 1, 60000);
-    console.log('   Transaction confirmed!\n');
+    console.log('   Confirmed!\n');
 
-    console.log('='.repeat(70));
-    console.log('  MULTIPLE SHIELDED OUTPUTS - SUCCESS');
-    console.log('='.repeat(70));
-    console.log(`\nTXID: ${txid}`);
-    console.log(`\nTransaction breakdown:`);
-    console.log(`  - Transparent input: ${zatoshiToZec(input.amount)} ZEC`);
-    console.log(`  - Shielded output 1: ${zatoshiToZec(payment1Amount)} ZEC`);
-    console.log(`  - Shielded output 2: ${zatoshiToZec(payment2Amount)} ZEC`);
-    console.log(`  - Change: ~${zatoshiToZec(input.amount - payment1Amount - payment2Amount - fee)} ZEC`);
-    console.log(`  - Fee: ${zatoshiToZec(fee)} ZEC\n`);
-
-    console.log('Privacy achieved:');
-    console.log('   - Both outputs are in the Orchard shielded pool');
-    console.log('   - Amounts are hidden from public view');
-    console.log('   - Only recipients can see their incoming funds\n');
-
-    console.log('EXAMPLE 6 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}`);
+    console.log(`   Shielded to 2 Orchard recipients\n`);
 
     // Cleanup
     request.free();

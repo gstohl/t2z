@@ -196,27 +196,7 @@ async function main() {
       console.log('   Transaction NOT signed - funds are SAFE!\n');
     }
 
-    console.log('='.repeat(70));
-    console.log('  SECURITY LESSONS');
-    console.log('='.repeat(70) + '\n');
-
-    console.log('KEY TAKEAWAYS:\n');
-    console.log('1. ALWAYS call verifyBeforeSigning() before signing a PCZT');
-    console.log('2. Never sign a PCZT from an untrusted source without verification');
-    console.log('3. The verification checks:');
-    console.log('   - Payment outputs match your transaction request');
-    console.log('   - Change outputs match expected values');
-    console.log('   - Fees are reasonable');
-    console.log('4. Hardware wallets should implement this verification');
-    console.log('5. In multi-party workflows, each signer should verify\n');
-
-    console.log('REAL-WORLD SCENARIOS WHERE THIS MATTERS:\n');
-    console.log('- Hardware wallet signing (PCZT comes from computer)');
-    console.log('- Multi-sig wallets (PCZT passed between co-signers)');
-    console.log('- Payment processors (PCZT from merchant/customer)');
-    console.log('- Any scenario where PCZT crosses trust boundaries\n');
-
-    console.log('EXAMPLE 4 COMPLETED - Security Features Demonstrated!\n');
+    console.log('KEY TAKEAWAY: Always call verifyBeforeSigning() before signing!\n');
 
     // Cleanup
     legitimateRequest.free();

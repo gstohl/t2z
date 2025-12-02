@@ -110,8 +110,8 @@ func main() {
 	fmt.Printf("Using UTXO: %s ZEC\n\n", zatoshiToZec7(inputAmount))
 
 	// Create mixed payments
-	// ZIP-317 fee for 1 transparent + 1 Orchard output + change
-	fee := uint64(30_000) // Higher fee for mixed outputs
+	// Calculate fee: 1 input, 2 transparent (1 payment + 1 change), 1 orchard
+	fee := t2z.CalculateFee(1, 2, 1)
 	availableForPayments := inputAmount - fee
 
 	// Split: 35% to transparent, 35% to shielded, 30% to change
@@ -209,32 +209,5 @@ func main() {
 	fmt.Println("   Mixed outputs = Orchard proofs + transparent outputs")
 	fmt.Println()
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  MIXED OUTPUTS TRANSACTION - READY")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println()
-
-	fmt.Println("Transaction breakdown:")
-	fmt.Printf("  - Transparent input: %s ZEC\n", zatoshiToZec7(inputAmount))
-	fmt.Printf("  - Transparent output: %s ZEC (publicly visible)\n", zatoshiToZec7(transparentPayment))
-	fmt.Printf("  - Shielded output: %s ZEC (private)\n", zatoshiToZec7(shieldedPayment))
-	fmt.Printf("  - Change: ~%s ZEC\n", zatoshiToZec7(inputAmount-transparentPayment-shieldedPayment-fee))
-	fmt.Printf("  - Fee: %s ZEC\n", zatoshiToZec7(fee))
-	fmt.Println()
-
-	fmt.Println("Privacy analysis:")
-	fmt.Println("   - Transparent recipient: amount and address are PUBLIC")
-	fmt.Println("   - Shielded recipient: amount and address are PRIVATE")
-	fmt.Println("   - Observer can see: input amount, transparent output")
-	fmt.Println("   - Observer cannot see: shielded amount, shielded recipient")
-	fmt.Println()
-
-	fmt.Println("Use cases for mixed transactions:")
-	fmt.Println("   - Pay merchant (transparent) + save remainder (shielded)")
-	fmt.Println("   - Exchange withdrawal (transparent) + personal wallet (shielded)")
-	fmt.Println("   - Tax-reportable payment + private savings")
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 7 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
+	fmt.Printf("SUCCESS! Mixed: %s ZEC transparent + %s ZEC shielded\n\n", zatoshiToZec7(transparentPayment), zatoshiToZec7(shieldedPayment))
 }

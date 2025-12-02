@@ -29,6 +29,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
   TransparentInput,
 } from 't2z';
@@ -95,8 +96,8 @@ async function main() {
     const totalInput = input.amount;
 
     // Create multiple payments with dynamic amounts based on available UTXO
-    // ZIP 317 fee for 1 input + 3 outputs = ~15-20k zatoshis
-    const fee = 20_000n;
+    // Calculate fee: 1 input, 3 outputs (2 payments + 1 change), 0 orchard
+    const fee = calculateFee(1, 3, 0);
     // Split available funds: 30% each for payments, 40% for change
     const availableForPayments = totalInput - fee;
     const payment1Amount = availableForPayments * 3n / 10n; // 30%
@@ -169,18 +170,13 @@ async function main() {
     // Mark UTXO as spent for subsequent examples
     await markUtxosSpent([input]);
 
-    // Wait for internal miner to confirm
-    console.log('Waiting for confirmation (internal miner)...');
+    // Wait for confirmation
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
     await client.waitForBlocks(currentHeight + 1, 60000);
-    console.log('   Transaction confirmed!\n');
+    console.log('   Confirmed!\n');
 
-    // Note: Zebra's getrawtransaction doesn't return decoded fields
-    console.log('Transaction confirmed in the blockchain.');
-    console.log(`  TXID: ${txid}`);
-    console.log(`  Sent to 2 recipients + change\n`);
-
-    console.log('EXAMPLE 2 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}\n`);
 
     // Cleanup
     request.free();

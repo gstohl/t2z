@@ -40,19 +40,17 @@ fun main() = runBlocking {
         var totalInput = 0UL
         val inputs = mutableListOf<com.zcash.t2z.TransparentInput>()
 
-        // Estimate fee based on number of inputs we'll use
-        // ZIP-317: max(2, actions) * 5000, actions = inputs + 2 outputs
-        fun estimateFee(numInputs: Int) = (maxOf(2, numInputs + 2) * 5000).toULong()
-
         for (utxo in allUtxos) {
             inputs.add(utxo)
             totalInput += utxo.amount
-            val fee = estimateFee(inputs.size)
+            // Calculate fee: N inputs, 2 outputs (1 payment + 1 change), 0 orchard
+            val fee = calculateFee(inputs.size, 2, 0).toULong()
             // Need enough for fee + at least 1000 zatoshi payment
             if (totalInput > fee + 1000UL) break
         }
 
-        val fee = estimateFee(inputs.size)
+        // Calculate fee: N inputs, 2 outputs (1 payment + 1 change), 0 orchard
+        val fee = calculateFee(inputs.size, 2, 0).toULong()
 
         if (totalInput <= fee) {
             throw Exception("Not enough funds: have ${totalInput} zatoshis, need ${fee} for fee. Wait for more blocks.")
@@ -129,18 +127,12 @@ fun main() = runBlocking {
             markUtxosSpent(inputs)
 
             // Wait for confirmation
-            println("Waiting for confirmation block (internal miner)...")
+            println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
-            println("  Block height: $currentHeight")
             client.waitForBlocks(currentHeight + 1, 60000)
-            val newHeight = client.getBlockchainInfo().blocks
-            println("  New block height: $newHeight")
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("Transaction confirmed in the blockchain.")
-            println("  TXID: $txid\n")
-
-            println("EXAMPLE 1 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 1 FAILED", e)

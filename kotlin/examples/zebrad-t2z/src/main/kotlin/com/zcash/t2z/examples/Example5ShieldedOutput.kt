@@ -43,8 +43,9 @@ fun main() = runBlocking {
         println("Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n")
 
         // Create shielded payment (use 50% of UTXO for payment)
+        // Calculate fee: 1 input, 1 transparent change, 1 orchard output
+        val fee = calculateFee(1, 1, 1).toULong()
         val paymentAmount = input.amount / 2UL
-        val fee = 15_000UL // ZIP-317 fee for T→Z (includes Orchard action cost)
 
         val payments = listOf(Payment(address = SHIELDED_ADDRESS, amount = paymentAmount))
 
@@ -103,24 +104,13 @@ fun main() = runBlocking {
 
             markUtxosSpent(listOf(input))
 
-            println("Waiting for confirmation (internal miner)...")
+            println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
             client.waitForBlocks(currentHeight + 1, 60000)
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("=".repeat(70))
-            println("  T→Z TRANSACTION SUCCESSFUL")
-            println("=".repeat(70))
-            println("\nTXID: $txid")
-            println("\nWhat happened:")
-            println("  - Transparent input: ${zatoshiToZec(input.amount)} ZEC")
-            println("  - Shielded output: ${zatoshiToZec(paymentAmount)} ZEC")
-            println("  - Change: returned to transparent address")
-            println("  - Fee: ${zatoshiToZec(fee)} ZEC\n")
-            println("The shielded output is now private - only the recipient")
-            println("with the viewing key can see the amount and memo.\n")
-
-            println("EXAMPLE 5 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid")
+            println("   Shielded ${zatoshiToZec(paymentAmount)} ZEC to Orchard\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 5 FAILED", e)

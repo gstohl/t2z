@@ -52,7 +52,8 @@ public class Example3MultipleInputs {
 
             System.out.println("\nUsing 2 inputs totaling " + zatoshiToZec(totalInput) + " ZEC");
 
-            long fee = 10_000L; // Simple fee for 2 inputs -> 1 output
+            // Calculate fee: 2 inputs, 1 output, 0 orchard
+            long fee = T2z.calculateFee(inputs.size(), 1, 0);
             long outputAmount = totalInput - fee;
 
             List<Payment> payments = Collections.singletonList(
@@ -106,20 +107,10 @@ public class Example3MultipleInputs {
                 System.out.println("Waiting for confirmation (internal miner)...");
                 int currentHeight = client.getBlockchainInfo().blocks;
                 client.waitForBlocks(currentHeight + 1, 60000);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("Transaction Analysis:");
-                System.out.println("   TXID: " + txid);
-                System.out.println("   Inputs consolidated: 2");
-                System.out.println("   Output UTXOs: 1 (consolidation)");
-                System.out.println("   Fee paid: " + zatoshiToZec(fee) + " ZEC");
-                System.out.println("   Result: 2 UTXOs -> 1 UTXO\n");
-
-                System.out.println("Key Takeaway:");
-                System.out.println("   Multiple UTXOs can be combined into fewer outputs.");
-                System.out.println("   Each input requires its own sighash and signature.\n");
-
-                System.out.println("EXAMPLE 3 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid);
+                System.out.println("   " + inputs.size() + " UTXOs consolidated into 1\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 3 FAILED", e);

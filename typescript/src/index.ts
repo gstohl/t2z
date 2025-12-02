@@ -43,7 +43,7 @@
  * const sighash = getSighash(proved, 0);
  *
  * // Sign with your key (secp256k1)
- * const signature = await signMessage(privateKey, sighash);
+ * const signature = signMessage(privateKey, sighash);
  *
  * // Finalize
  * const signed = appendSignature(proved, 0, signature);

@@ -101,8 +101,8 @@ func main() {
 		},
 	}
 
-	// TypeScript Example 2: 30% each for 2 payments, fee 20k
-	fee := uint64(20_000)
+	// Calculate fee: 1 input, 3 outputs (2 payments + 1 change), 0 orchard
+	fee := t2z.CalculateFee(1, 3, 0)
 	availableForPayments := inputAmount - fee
 	payment1Amount := availableForPayments * 30 / 100 // 30%
 	payment2Amount := availableForPayments * 30 / 100 // 30%
@@ -186,15 +186,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to finalize: %v", err)
 	}
-	fmt.Printf("   Transaction finalized (%d bytes)\n", len(txBytes))
-	fmt.Println()
+	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  TRANSACTION READY FOR BROADCAST")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("\nTransaction hex (first 100 chars): %s...\n", hex.EncodeToString(txBytes)[:100])
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 2 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
+	fmt.Printf("SUCCESS! Transaction ready (%d bytes)\n\n", len(txBytes))
 }

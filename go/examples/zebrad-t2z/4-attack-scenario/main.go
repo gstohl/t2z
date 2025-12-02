@@ -227,35 +227,8 @@ func main() {
 	}
 	fmt.Println()
 
-	// Security Lessons
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  SECURITY LESSONS")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println()
-
-	fmt.Println("KEY TAKEAWAYS:")
-	fmt.Println()
-	fmt.Println("1. ALWAYS call VerifyBeforeSigning() before signing a PCZT")
-	fmt.Println("2. Never sign a PCZT from an untrusted source without verification")
-	fmt.Println("3. The verification checks:")
-	fmt.Println("   - Payment outputs match your transaction request")
-	fmt.Println("   - Change outputs match expected values")
-	fmt.Println("   - Fees are reasonable")
-	fmt.Println("4. Hardware wallets should implement this verification")
-	fmt.Println("5. In multi-party workflows, each signer should verify")
-	fmt.Println()
-
-	fmt.Println("REAL-WORLD SCENARIOS WHERE THIS MATTERS:")
-	fmt.Println()
-	fmt.Println("- Hardware wallet signing (PCZT comes from computer)")
-	fmt.Println("- Multi-sig wallets (PCZT passed between co-signers)")
-	fmt.Println("- Payment processors (PCZT from merchant/customer)")
-	fmt.Println("- Any scenario where PCZT crosses trust boundaries")
-	fmt.Println()
-
 	// Clean up the original PCZT
 	proved.Free()
 
-	fmt.Println("EXAMPLE 4 COMPLETED - Security Features Demonstrated!")
-	fmt.Println()
+	fmt.Println("KEY TAKEAWAY: Always call VerifyBeforeSigning() before signing!\n")
 }

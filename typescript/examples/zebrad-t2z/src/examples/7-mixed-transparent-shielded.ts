@@ -28,6 +28,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
 } from 't2z';
 
@@ -83,9 +84,8 @@ async function main() {
     console.log(`Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n`);
 
     // Create mixed payments
-    // ZIP-317 fee for 1 transparent + 1 Orchard output + change
-    // Mixed transactions need higher fee to account for both output types
-    const fee = 30_000n; // Higher fee for mixed outputs
+    // Calculate fee: 1 input, 2 transparent (1 payment + 1 change), 1 orchard
+    const fee = calculateFee(1, 2, 1);
     const availableForPayments = input.amount - fee;
 
     // Split: 35% to transparent, 35% to shielded, 30% to change
@@ -167,34 +167,13 @@ async function main() {
     await markUtxosSpent([input]);
 
     // Wait for confirmation
-    console.log('Waiting for confirmation (internal miner)...');
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
     await client.waitForBlocks(currentHeight + 1, 60000);
-    console.log('   Transaction confirmed!\n');
+    console.log('   Confirmed!\n');
 
-    console.log('='.repeat(70));
-    console.log('  MIXED OUTPUTS TRANSACTION - SUCCESS');
-    console.log('='.repeat(70));
-    console.log(`\nTXID: ${txid}`);
-    console.log(`\nTransaction breakdown:`);
-    console.log(`  - Transparent input: ${zatoshiToZec(input.amount)} ZEC`);
-    console.log(`  - Transparent output: ${zatoshiToZec(transparentPayment)} ZEC (publicly visible)`);
-    console.log(`  - Shielded output: ${zatoshiToZec(shieldedPayment)} ZEC (private)`);
-    console.log(`  - Change: ~${zatoshiToZec(input.amount - transparentPayment - shieldedPayment - fee)} ZEC`);
-    console.log(`  - Fee: ${zatoshiToZec(fee)} ZEC\n`);
-
-    console.log('Privacy analysis:');
-    console.log('   - Transparent recipient: amount and address are PUBLIC');
-    console.log('   - Shielded recipient: amount and address are PRIVATE');
-    console.log('   - Observer can see: input amount, transparent output');
-    console.log('   - Observer cannot see: shielded amount, shielded recipient\n');
-
-    console.log('Use cases for mixed transactions:');
-    console.log('   - Pay merchant (transparent) + save remainder (shielded)');
-    console.log('   - Exchange withdrawal (transparent) + personal wallet (shielded)');
-    console.log('   - Tax-reportable payment + private savings\n');
-
-    console.log('EXAMPLE 7 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}`);
+    console.log(`   Mixed: ${zatoshiToZec(transparentPayment)} ZEC transparent + ${zatoshiToZec(shieldedPayment)} ZEC shielded\n`);
 
     // Cleanup
     request.free();

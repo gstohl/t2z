@@ -40,9 +40,10 @@ fun main() = runBlocking {
         println("Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n")
 
         // Create two shielded payments
+        // Calculate fee: 1 input, 1 transparent change, 2 orchard outputs
+        val fee = calculateFee(1, 1, 2).toULong()
         val payment1Amount = input.amount / 4UL
         val payment2Amount = input.amount / 4UL
-        val fee = 20_000UL // Slightly higher fee for multiple Orchard actions
 
         val payments = listOf(
             Payment(address = SHIELDED_ADDRESS_1, amount = payment1Amount),
@@ -100,15 +101,10 @@ fun main() = runBlocking {
             println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
             client.waitForBlocks(currentHeight + 1, 60000)
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("=".repeat(70))
-            println("  MULTIPLE SHIELDED OUTPUTS SUCCESSFUL")
-            println("=".repeat(70))
-            println("\n2 recipients received shielded funds in one transaction.")
-            println("Each output is private and unlinkable.\n")
-
-            println("EXAMPLE 6 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid")
+            println("   Shielded to 2 Orchard recipients\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 6 FAILED", e)

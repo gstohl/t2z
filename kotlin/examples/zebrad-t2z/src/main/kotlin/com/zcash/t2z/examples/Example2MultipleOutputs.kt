@@ -35,9 +35,10 @@ fun main() = runBlocking {
 
         // Send to two recipients (both to ourselves for demo)
         val destAddress = testData.transparent.address
+        // Calculate fee: 1 input, 3 outputs (2 payments + 1 change), 0 orchard
+        val fee = calculateFee(1, 3, 0).toULong()
         val payment1Amount = input.amount / 4UL
         val payment2Amount = input.amount / 4UL
-        val fee = 10_000UL
 
         val payments = listOf(
             Payment(address = destAddress, amount = payment1Amount),
@@ -94,9 +95,9 @@ fun main() = runBlocking {
             println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
             client.waitForBlocks(currentHeight + 1, 60000)
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("EXAMPLE 2 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 2 FAILED", e)

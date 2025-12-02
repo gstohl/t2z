@@ -106,8 +106,9 @@ func main() {
 	fmt.Printf("Using UTXO: %s ZEC\n\n", zatoshiToZec5(inputAmount))
 
 	// Create shielded payment (50% of input)
+	// Calculate fee: 1 input, 1 transparent change, 1 orchard output
+	fee := t2z.CalculateFee(1, 1, 1)
 	paymentAmount := inputAmount / 2
-	fee := uint64(15_000) // ZIP-317 fee for T->Z (includes Orchard action cost)
 
 	payments := []t2z.Payment{
 		{Address: shieldedAddress5, Amount: paymentAmount},
@@ -192,25 +193,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to finalize: %v", err)
 	}
-	fmt.Printf("   Transaction finalized (%d bytes)\n", len(txBytes))
-	fmt.Println("   Note: T->Z transactions are larger due to Orchard proofs")
-	fmt.Println()
+	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  T->Z TRANSACTION READY")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println()
-
-	fmt.Println("What this demonstrates:")
-	fmt.Printf("  - Transparent input: %s ZEC\n", zatoshiToZec5(inputAmount))
-	fmt.Printf("  - Shielded output: %s ZEC\n", zatoshiToZec5(paymentAmount))
-	fmt.Println("  - Change: returned to transparent address")
-	fmt.Printf("  - Fee: %s ZEC\n", zatoshiToZec5(fee))
-	fmt.Println()
-	fmt.Println("The shielded output is now private - only the recipient")
-	fmt.Println("with the viewing key can see the amount and memo.")
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 5 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
+	fmt.Printf("SUCCESS! Shielded %s ZEC to Orchard\n\n", zatoshiToZec5(paymentAmount))
 }

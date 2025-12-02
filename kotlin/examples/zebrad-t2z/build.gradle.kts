@@ -39,6 +39,7 @@ listOf(
     "example1" to "Example1SingleOutput",
     "example2" to "Example2MultipleOutputs",
     "example3" to "Example3MultipleInputs",
+    "example4" to "Example4AttackScenario",
     "example5" to "Example5ShieldedOutput",
     "example6" to "Example6MultipleShielded",
     "example7" to "Example7MixedOutputs"
@@ -58,5 +59,5 @@ listOf(
 tasks.register("all") {
     group = "examples"
     description = "Run all examples in sequence"
-    dependsOn("example1", "example2", "example3", "example5", "example6", "example7")
+    dependsOn("example1", "example2", "example3", "example4", "example5", "example6", "example7")
 }

@@ -28,6 +28,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   verifyBeforeSigning,
+  calculateFee,
   Payment,
 } from 't2z';
 
@@ -77,9 +78,10 @@ async function main() {
 
     // For this example, send back to ourselves (transparent -> transparent)
     const destAddress = testData.transparent.address;
+    // Calculate fee: inputs, 2 outputs (1 payment + 1 change), 0 orchard
+    const fee = calculateFee(inputs.length, 2, 0);
     // Use 50% of the total input value, leaving room for fee and change
-    const paymentAmount = totalInput / 2n; // Send half to destination
-    const fee = 10_000n; // 0.0001 ZEC fee for transparent-only tx
+    const paymentAmount = totalInput / 2n;
 
     const payments: Payment[] = [
       {
@@ -149,21 +151,13 @@ async function main() {
     // Mark UTXOs as spent for subsequent examples
     await markUtxosSpent(inputs);
 
-    // Wait for internal miner to confirm the transaction
-    console.log('Waiting for confirmation block (internal miner)...');
+    // Wait for confirmation
+    console.log('Waiting for confirmation...');
     const currentHeight = (await client.getBlockchainInfo()).blocks;
-    console.log(`  Block height: ${currentHeight}`);
-    await client.waitForBlocks(currentHeight + 1, 60000); // 1 min timeout
-    const newHeight = (await client.getBlockchainInfo()).blocks;
-    console.log(`  New block height: ${newHeight}`);
-    console.log('   Transaction confirmed!\n');
+    await client.waitForBlocks(currentHeight + 1, 60000);
+    console.log('   Confirmed!\n');
 
-    // Note: Zebra's getrawtransaction doesn't return full decoded tx like zcashd
-    // The transaction was successfully broadcast and confirmed
-    console.log('Transaction confirmed in the blockchain.');
-    console.log(`  TXID: ${txid}\n`);
-
-    console.log('EXAMPLE 1 COMPLETED SUCCESSFULLY!\n');
+    console.log(`SUCCESS! TXID: ${txid}\n`);
 
     // Cleanup
     request.free();

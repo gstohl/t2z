@@ -110,8 +110,8 @@ func main() {
 	fmt.Printf("Using UTXO: %s ZEC\n\n", zatoshiToZec6(inputAmount))
 
 	// Create two shielded payments
-	// ZIP-317 fee for 2 Orchard outputs + transparent change
-	fee := uint64(40_000) // Higher fee for multiple Orchard actions
+	// Calculate fee: 1 input, 1 transparent change, 2 orchard outputs
+	fee := t2z.CalculateFee(1, 1, 2)
 	availableForPayments := inputAmount - fee
 	payment1Amount := availableForPayments / 3 // ~33%
 	payment2Amount := availableForPayments / 3 // ~33%
@@ -203,29 +203,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to finalize: %v", err)
 	}
-	fmt.Printf("   Transaction finalized (%d bytes)\n", len(txBytes))
-	fmt.Println("   Multiple Orchard outputs = larger transaction")
-	fmt.Println()
+	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  MULTIPLE SHIELDED OUTPUTS - READY")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println()
-
-	fmt.Println("Transaction breakdown:")
-	fmt.Printf("  - Transparent input: %s ZEC\n", zatoshiToZec6(inputAmount))
-	fmt.Printf("  - Shielded output 1: %s ZEC\n", zatoshiToZec6(payment1Amount))
-	fmt.Printf("  - Shielded output 2: %s ZEC\n", zatoshiToZec6(payment2Amount))
-	fmt.Printf("  - Change: ~%s ZEC\n", zatoshiToZec6(inputAmount-payment1Amount-payment2Amount-fee))
-	fmt.Printf("  - Fee: %s ZEC\n", zatoshiToZec6(fee))
-	fmt.Println()
-
-	fmt.Println("Privacy achieved:")
-	fmt.Println("   - Both outputs are in the Orchard shielded pool")
-	fmt.Println("   - Amounts are hidden from public view")
-	fmt.Println("   - Only recipients can see their incoming funds")
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 6 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
+	fmt.Println("SUCCESS! Shielded to 2 Orchard recipients\n")
 }

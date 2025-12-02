@@ -111,8 +111,8 @@ func main() {
 	}
 	fmt.Printf("  Total: %s ZEC\n\n", zatoshiToZec3(totalInput))
 
-	// TypeScript: fee = 10_000n for consolidation
-	fee := uint64(10_000)
+	// Calculate fee: 2 inputs, 1 output, 0 orchard
+	fee := t2z.CalculateFee(len(inputs), 1, 0)
 	outputAmount := totalInput - fee
 
 	payments := []t2z.Payment{
@@ -191,22 +191,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to finalize: %v", err)
 	}
-	fmt.Printf("   Transaction finalized (%d bytes)\n", len(txBytes))
-	fmt.Println()
+	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  TRANSACTION READY")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("\nInputs consolidated: %d\n", len(inputs))
-	fmt.Printf("Output UTXOs: 1 (consolidation)\n")
-	fmt.Printf("Fee paid: %s ZEC\n", zatoshiToZec3(fee))
-	fmt.Println()
-
-	fmt.Println("Key Takeaway:")
-	fmt.Println("   Multiple UTXOs can be combined into fewer outputs.")
-	fmt.Println("   Each input requires its own sighash and signature.")
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 3 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
+	fmt.Printf("SUCCESS! %d UTXOs consolidated into 1\n\n", len(inputs))
 }

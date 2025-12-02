@@ -39,9 +39,10 @@ fun main() = runBlocking {
         println("Using UTXO: ${zatoshiToZec(input.amount)} ZEC\n")
 
         // Create mixed payments
+        // Calculate fee: 1 input, 2 transparent (1 payment + 1 change), 1 orchard
+        val fee = calculateFee(1, 2, 1).toULong()
         val transparentAmount = input.amount / 4UL
         val shieldedAmount = input.amount / 4UL
-        val fee = 15_000UL
 
         val payments = listOf(
             Payment(address = testData.transparent.address, amount = transparentAmount),
@@ -103,18 +104,10 @@ fun main() = runBlocking {
             println("Waiting for confirmation...")
             val currentHeight = client.getBlockchainInfo().blocks
             client.waitForBlocks(currentHeight + 1, 60000)
-            println("   Transaction confirmed!\n")
+            println("   Confirmed!\n")
 
-            println("=".repeat(70))
-            println("  MIXED OUTPUT TRANSACTION SUCCESSFUL")
-            println("=".repeat(70))
-            println("\nTransaction contains:")
-            println("  - 1 transparent output (visible on blockchain)")
-            println("  - 1 shielded Orchard output (private)")
-            println("\nThis demonstrates t2z flexibility in supporting")
-            println("both legacy transparent and privacy-preserving outputs.\n")
-
-            println("EXAMPLE 7 COMPLETED SUCCESSFULLY!\n")
+            println("SUCCESS! TXID: $txid")
+            println("   Mixed: ${zatoshiToZec(transparentAmount)} ZEC transparent + ${zatoshiToZec(shieldedAmount)} ZEC shielded\n")
         }
     } catch (e: Exception) {
         printError("EXAMPLE 7 FAILED", e)

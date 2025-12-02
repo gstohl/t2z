@@ -101,6 +101,19 @@ Consuming functions transfer ownership (input PCZT becomes invalid):
 Non-consuming (read-only):
 - `getSighash`, `serialize`, `verifyBeforeSigning`
 
+## Considerations
+
+**Sync API**: All functions are synchronous and will block the event loop during FFI calls. For most operations this is negligible (microseconds), but `proveTransaction` can take longer on first call when loading proving keys.
+
+For server applications requiring non-blocking I/O, consider wrapping calls in a worker thread:
+
+```typescript
+import { Worker } from 'worker_threads';
+// Run heavy operations like proveTransaction in a worker
+```
+
+A built-in async API using worker threads may be added in a future release.
+
 ## License
 
 MIT

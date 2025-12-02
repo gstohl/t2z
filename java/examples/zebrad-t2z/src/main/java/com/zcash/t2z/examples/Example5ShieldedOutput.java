@@ -47,10 +47,11 @@ public class Example5ShieldedOutput {
                 throw new Exception("No mature UTXOs available.");
             }
 
-            // Collect enough UTXOs for shielded fee (higher than transparent)
+            // Collect enough UTXOs for shielded fee
             long totalInput = 0;
             List<TransparentInput> inputs = new ArrayList<>();
-            long fee = 15_000L; // Shielded transactions have higher fee
+            // Calculate fee: 1 input, 1 transparent change, 1 orchard output
+            long fee = T2z.calculateFee(1, 1, 1);
 
             for (TransparentInput utxo : allUtxos) {
                 inputs.add(utxo);
@@ -123,24 +124,13 @@ public class Example5ShieldedOutput {
 
                 markUtxosSpent(inputs);
 
-                System.out.println("Waiting for confirmation (internal miner)...");
+                System.out.println("Waiting for confirmation...");
                 int currentHeight = client.getBlockchainInfo().blocks;
                 client.waitForBlocks(currentHeight + 1, 60000);
-                System.out.println("   Transaction confirmed!\n");
+                System.out.println("   Confirmed!\n");
 
-                System.out.println("=".repeat(70));
-                System.out.println("  T->Z TRANSACTION SUCCESSFUL");
-                System.out.println("=".repeat(70));
-                System.out.println("\nTXID: " + txid);
-                System.out.println("\nWhat happened:");
-                System.out.println("  - Transparent input: " + zatoshiToZec(totalInput) + " ZEC");
-                System.out.println("  - Shielded output: " + zatoshiToZec(paymentAmount) + " ZEC");
-                System.out.println("  - Change: returned to transparent address");
-                System.out.println("  - Fee: " + zatoshiToZec(fee) + " ZEC");
-                System.out.println("\nThe shielded output is now private - only the recipient");
-                System.out.println("with the viewing key can see the amount and memo.\n");
-
-                System.out.println("EXAMPLE 5 COMPLETED SUCCESSFULLY!\n");
+                System.out.println("SUCCESS! TXID: " + txid);
+                System.out.println("   Shielded " + zatoshiToZec(paymentAmount) + " ZEC to Orchard\n");
             }
         } catch (Exception e) {
             printError("EXAMPLE 5 FAILED", e);

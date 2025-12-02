@@ -107,11 +107,10 @@ func main() {
 
 	fmt.Printf("UTXO: %s ZEC\n\n", zatoshiToZec(inputAmount))
 
-	// 3. Create payment request (matches TypeScript Example 1)
-	// TypeScript: paymentAmount = input.amount / 2n (50% of input)
-	// TypeScript: fee = 10_000n for transparent-only tx
+	// 3. Create payment request
+	// Calculate fee: 1 input, 2 outputs (1 payment + 1 change), 0 orchard
+	fee := t2z.CalculateFee(1, 2, 0)
 	paymentAmount := inputAmount / 2 // 50% of input
-	fee := uint64(10_000)            // ZIP-317 fee for T→T
 
 	payments := []t2z.Payment{
 		{
@@ -202,20 +201,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to finalize: %v", err)
 	}
-	fmt.Printf("   Transaction finalized (%d bytes)\n", len(txBytes))
-	fmt.Println()
+	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Println("  TRANSACTION READY FOR BROADCAST")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("\nTransaction hex (first 100 chars): %s...\n", hex.EncodeToString(txBytes)[:100])
-	fmt.Println()
-
-	fmt.Println("EXAMPLE 1 COMPLETED SUCCESSFULLY!")
-	fmt.Println()
-	fmt.Println("Next steps (with live Zebra):")
-	fmt.Println("  1. Connect to Zebra RPC")
-	fmt.Println("  2. Fetch real UTXOs for your address")
-	fmt.Println("  3. Broadcast transaction with sendrawtransaction")
-	fmt.Println()
+	fmt.Printf("SUCCESS! Transaction ready (%d bytes)\n\n", len(txBytes))
 }
