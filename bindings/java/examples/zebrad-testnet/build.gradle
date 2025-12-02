@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.zcash.t2z.examples'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation files('../../build/libs/t2z-0.1.0.jar')
+    implementation 'net.java.dev.jna:jna:5.14.0'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+application {
+    mainClass = 'com.zcash.t2z.examples.Demo'
+}
+
+tasks.withType(JavaExec).configureEach {
+    systemProperty 'jna.library.path', file('../../../../core/rust/target/release').absolutePath
+}
