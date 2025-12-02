@@ -15,9 +15,9 @@
 //   - Parse/Serialize - PCZT serialization
 package t2z
 
-// #cgo CFLAGS: -I../rust/include
-// #cgo darwin LDFLAGS: -L../rust/target/release -lt2z -ldl -lm -framework Security -framework Foundation
-// #cgo linux LDFLAGS: -L../rust/target/release -lt2z -ldl -lm -lpthread
+// #cgo CFLAGS: -I../../core/rust/include
+// #cgo darwin LDFLAGS: -L../../core/rust/target/release -lt2z -ldl -lm -framework Security -framework Foundation
+// #cgo linux LDFLAGS: -L../../core/rust/target/release -lt2z -ldl -lm -lpthread
 // #include <stdlib.h>
 // #include "t2z.h"
 import "C"

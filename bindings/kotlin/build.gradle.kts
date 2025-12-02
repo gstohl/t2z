@@ -28,7 +28,7 @@ tasks.test {
     useJUnitPlatform()
 
     // Set library path for native library
-    systemProperty("jna.library.path", file("../rust/target/release").absolutePath)
+    systemProperty("jna.library.path", file("../../core/rust/target/release").absolutePath)
 }
 
 kotlin {

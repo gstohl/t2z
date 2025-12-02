@@ -6,10 +6,10 @@ Java bindings using [JNA](https://github.com/java-native-access/jna) to wrap the
 
 ```bash
 # Build Rust library first
-cd ../rust && cargo build --release
+cd ../../core/rust && cargo build --release
 
 # Build and test Java
-cd ../java
+cd ../../bindings/java
 ./gradlew build
 ./gradlew test
 ```
@@ -151,12 +151,12 @@ dependencies {
 
 Set library path:
 ```java
-System.setProperty("jna.library.path", "/path/to/rust/target/release");
+System.setProperty("jna.library.path", "/path/to/core/rust/target/release");
 ```
 
 Or via environment:
 ```bash
-export JNA_LIBRARY_PATH=/path/to/rust/target/release
+export JNA_LIBRARY_PATH=/path/to/core/rust/target/release
 ./gradlew test
 ```
 

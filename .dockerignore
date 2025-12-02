@@ -1,5 +1,5 @@
 # Rust build artifacts (will rebuild in container)
-rust/target
+core/rust/target
 
 # Node modules (will reinstall in container)
 **/node_modules

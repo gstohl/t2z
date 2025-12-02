@@ -15,8 +15,8 @@ function getLibraryPath(): string {
   const platform = os.platform();
   const arch = os.arch();
 
-  // Library is in rust/target/release relative to typescript/dist folder
-  const basePath = path.join(__dirname, '..', '..', 'rust', 'target', 'release');
+  // Library is in core/rust/target/release relative to bindings/typescript/dist folder
+  const basePath = path.join(__dirname, '..', '..', '..', 'core', 'rust', 'target', 'release');
 
   if (platform === 'darwin') {
     return path.join(basePath, 'libt2z.dylib');

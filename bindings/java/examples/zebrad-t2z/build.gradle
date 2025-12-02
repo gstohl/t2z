@@ -18,7 +18,7 @@ java {
 
 dependencies {
     // t2z library (local project dependency)
-    implementation files('../../../java/build/libs/t2z-0.1.0.jar')
+    implementation files('../../build/libs/t2z-0.1.0.jar')
 
     // JNA for native library loading (required by t2z)
     implementation 'net.java.dev.jna:jna:5.14.0'
@@ -35,7 +35,7 @@ dependencies {
 
 // Set native library path for all Java execution tasks
 tasks.withType(JavaExec).configureEach {
-    systemProperty 'jna.library.path', file('../../../rust/target/release').absolutePath
+    systemProperty 'jna.library.path', file('../../../../core/rust/target/release').absolutePath
 }
 
 // Register tasks for each example

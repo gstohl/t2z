@@ -51,7 +51,7 @@ listOf(
         classpath = sourceSets["main"].runtimeClasspath
 
         // Set native library path
-        systemProperty("jna.library.path", file("../../../rust/target/release").absolutePath)
+        systemProperty("jna.library.path", file("../../../../core/rust/target/release").absolutePath)
     }
 }
 

@@ -6,10 +6,10 @@ Go bindings using CGO to wrap the Rust core library.
 
 ```bash
 # Build Rust library first
-cd ../rust && cargo build --release
+cd ../../core/rust && cargo build --release
 
 # Test Go bindings
-cd ../go && go test -v
+cd ../../bindings/go && go test -v
 ```
 
 ## Usage

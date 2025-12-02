@@ -1,6 +1,6 @@
-# t2z Kotlin Zebra Examples
+# t2z Zebra Examples
 
-Kotlin examples demonstrating the **t2z** library with Zebra regtest.
+TypeScript examples demonstrating the **t2z** library with Zebra regtest.
 
 ## Prerequisites
 
@@ -22,28 +22,21 @@ docker-compose logs -f
 
 The internal miner auto-mines blocks every ~30 seconds. You need **101 blocks** for coinbase maturity (~50 minutes from fresh start, or instant if already running).
 
-### 3. Build Rust Library
+### 3. Install Dependencies
 
 ```bash
-cd rust
-cargo build --release
-```
-
-### 4. Build Examples
-
-```bash
-cd kotlin/examples/zebrad-t2z
-./gradlew build
+cd bindings/typescript/examples/zebrad-t2z
+npm install
 ```
 
 ## Quick Start
 
 ```bash
 # 1. Setup (waits for mature blocks, saves keypair)
-./gradlew setup
+npm run setup
 
 # 2. Run any example
-./gradlew example1
+npm run example:1
 ```
 
 ## Examples
@@ -52,22 +45,23 @@ cd kotlin/examples/zebrad-t2z
 
 | Example | Command | Description |
 |---------|---------|-------------|
-| 1 | `./gradlew example1` | Single output - basic transaction |
-| 2 | `./gradlew example2` | Multiple outputs - 2 recipients |
-| 3 | `./gradlew example3` | Multiple inputs - UTXO consolidation |
+| 1 | `npm run example:1` | Single output - basic transaction |
+| 2 | `npm run example:2` | Multiple outputs - 2 recipients |
+| 3 | `npm run example:3` | Multiple inputs - UTXO consolidation |
+| 4 | `npm run example:4` | Attack detection - PCZT verification |
 
 ### Shielded Transactions (T→Z)
 
 | Example | Command | Description |
 |---------|---------|-------------|
-| 5 | `./gradlew example5` | Single Orchard output |
-| 6 | `./gradlew example6` | Multiple Orchard outputs |
-| 7 | `./gradlew example7` | Mixed transparent + shielded outputs |
+| 5 | `npm run example:5` | Single Orchard output |
+| 6 | `npm run example:6` | Multiple Orchard outputs |
+| 7 | `npm run example:7` | Mixed transparent + shielded outputs |
 
 ### Run All
 
 ```bash
-./gradlew all
+npm run all
 ```
 
 ## Configuration
@@ -75,7 +69,7 @@ cd kotlin/examples/zebrad-t2z
 Examples connect to Zebra at `localhost:18232` by default. Override with:
 
 ```bash
-ZEBRA_HOST=192.168.1.100 ZEBRA_PORT=18232 ./gradlew example1
+ZEBRA_HOST=192.168.1.100 ZEBRA_PORT=18232 npm run example:1
 ```
 
 ## Test Keypair
@@ -102,27 +96,29 @@ All examples use a pre-configured test keypair:
 
 **Always verify PCZTs before signing!**
 
-```kotlin
-// SAFE
-verifyBeforeSigning(pczt, request, emptyList())
-val signed = appendSignature(pczt, 0, signature)
+```typescript
+// ✅ SAFE
+verifyBeforeSigning(pczt, request, []);
+const signed = appendSignature(pczt, 0, signature);
 
-// DANGEROUS - never skip verification!
-val signed = appendSignature(pczt, 0, signature)
+// ❌ DANGEROUS - never skip verification!
+const signed = appendSignature(pczt, 0, signature);
 ```
 
 ## Troubleshooting
 
 ### "Connection refused"
-Zebra is not running. Start it with:
+Zebra is not running. Start it from repository root:
 ```bash
-cd infra/zebrad && docker-compose up -d
+cd infra/zebrad
+docker-compose up -d
 ```
 
 ### "No mature UTXOs available"
-Wait for more blocks (101 needed for coinbase maturity). Check progress:
+Wait for more blocks (101 needed for coinbase maturity). Check progress from repository root:
 ```bash
-cd infra/zebrad && docker-compose logs -f
+cd infra/zebrad
+docker-compose logs -f
 ```
 
 ### "Transaction was committed to the best chain"

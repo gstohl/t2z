@@ -6,10 +6,10 @@ TypeScript/Node.js bindings using [koffi](https://koffi.dev/) FFI to wrap the Ru
 
 ```bash
 # Build Rust library first
-cd ../rust && cargo build --release
+cd ../../core/rust && cargo build --release
 
 # Install and build TypeScript
-cd ../typescript
+cd ../../bindings/typescript
 npm install
 npm run build
 npm test

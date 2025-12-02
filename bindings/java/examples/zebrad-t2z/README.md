@@ -17,27 +17,27 @@ cd infra/zebrad
 docker-compose down -v && docker-compose up -d
 
 # Run setup from typescript examples (waits for block 101)
-cd ../../typescript/examples/zebrad-t2z
+cd ../../bindings/typescript/examples/zebrad-t2z
 npm install && npm run setup
 
 # Copy test data to Java examples
-cp data/test-addresses.json ../../../java/examples/zebrad-t2z/data/
+cp data/test-addresses.json ../../bindings/java/examples/zebrad-t2z/data/
 
 # Run Java examples
-cd ../../../java/examples/zebrad-t2z
+cd ../../bindings/java/examples/zebrad-t2z
 ./gradlew example1
 ```
 
 ## Prerequisites
 
 1. **Zebra regtest running** (via docker-compose in `infra/zebrad/`)
-2. **Java library built** (run `./gradlew build` in `java/`)
-3. **Rust library built** (run `cargo build --release` in `rust/`)
+2. **Java library built** (run `./gradlew build` in `bindings/java/`)
+3. **Rust library built** (run `cargo build --release` in `core/rust/`)
 
 ## Running Examples
 
 ```bash
-cd java/examples/zebrad-t2z
+cd bindings/java/examples/zebrad-t2z
 
 # Build
 ./gradlew build

@@ -8,9 +8,14 @@ This repository contains multiple language implementations:
 
 ```
 t2z/
-├── rust/              # Core Rust library (FFI exports)
-├── go/                # Go bindings
-└── (future) python/   # Python bindings
+├── core/
+│   └── rust/          # Core Rust library (FFI exports)
+├── bindings/
+│   ├── go/            # Go bindings
+│   ├── typescript/    # TypeScript bindings
+│   ├── java/          # Java bindings
+│   └── kotlin/        # Kotlin bindings
+└── infra/             # Docker infrastructure
 ```
 
 ## Language-Specific Guidelines
@@ -81,19 +86,19 @@ git checkout -b fix/issue-description
 ### 3. Make Changes
 
 Follow language-specific guidelines:
-- **Rust**: See [rust/CONTRIBUTING.md](rust/CONTRIBUTING.md)
-- **Go**: See [go/CONTRIBUTING.md](go/CONTRIBUTING.md)
+- **Rust**: See [core/rust/CONTRIBUTING.md](core/rust/CONTRIBUTING.md)
+- **Go**: See [bindings/go/CONTRIBUTING.md](bindings/go/CONTRIBUTING.md)
 
 ### 4. Test Thoroughly
 
 ```bash
 # Test Rust library
-cd rust
+cd core/rust
 cargo test
 cargo clippy
 
 # Test Go bindings
-cd go
+cd bindings/go
 go test -v
 go test -race
 ```
@@ -161,10 +166,10 @@ Create a PR with:
 
 If modifying the FFI interface:
 
-1. **Update Rust**: Modify `rust/src/ffi.rs`
+1. **Update Rust**: Modify `core/rust/src/ffi.rs`
 2. **Regenerate headers**:
    ```bash
-   cd rust
+   cd core/rust
    cargo build
    cbindgen --output include/t2z.h
    ```
@@ -259,7 +264,7 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 ```bash
 # Build library
-cd rust
+cd core/rust
 cargo build --release
 
 # Run tests

@@ -6,24 +6,27 @@ Multi-language library for sending transparent Zcash to shielded Orchard outputs
 
 ```
 t2z/
-├── rust/        # Core library with C FFI
-├── go/          # Go bindings (CGO)
-├── typescript/  # TypeScript bindings (koffi)
-├── java/        # Java bindings (JNA)
-└── infra/       # Docker infrastructure for regtest
+├── core/
+│   └── rust/        # Core library with C FFI
+├── bindings/
+│   ├── go/          # Go bindings (CGO)
+│   ├── typescript/  # TypeScript bindings (koffi)
+│   ├── java/        # Java bindings (JNA)
+│   └── kotlin/      # Kotlin bindings (JNA)
+└── infra/           # Docker infrastructure for regtest
 ```
 
 ## Build
 
 ```bash
-cd rust && cargo build --release
+cd core/rust && cargo build --release
 ```
 
-Outputs in `rust/target/release/`:
+Outputs in `core/rust/target/release/`:
 - `libt2z.dylib` (macOS) / `libt2z.so` (Linux) / `t2z.dll` (Windows)
 - `libt2z.a` (static)
 
-Header: `rust/include/t2z.h`
+Header: `core/rust/include/t2z.h`
 
 ## Quick Example (TypeScript)
 
