@@ -11,7 +11,7 @@ TypeScript examples demonstrating the **t2z** library with Zebra regtest.
 From the repository root:
 
 ```bash
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose up -d
 
 # Watch logs for mining progress
@@ -110,14 +110,14 @@ const signed = appendSignature(pczt, 0, signature);
 ### "Connection refused"
 Zebra is not running. Start it from repository root:
 ```bash
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose up -d
 ```
 
 ### "No mature UTXOs available"
 Wait for more blocks (101 needed for coinbase maturity). Check progress from repository root:
 ```bash
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose logs -f
 ```
 

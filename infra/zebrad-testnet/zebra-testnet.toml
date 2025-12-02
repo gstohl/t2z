@@ -1,0 +1,32 @@
+# Zebra Testnet Configuration
+# Connects to the Zcash testnet network
+
+[network]
+network = "Testnet"
+listen_addr = "0.0.0.0:18233"
+
+# Use default testnet peers (Zebra will discover more via DNS)
+# initial_testnet_peers = []  # Uncomment to use only DNS seeding
+
+[state]
+cache_dir = "/home/zebra/.cache/zebra"
+ephemeral = false
+
+[rpc]
+listen_addr = "0.0.0.0:18232"
+parallel_cpu_threads = 1
+enable_cookie_auth = false
+
+[consensus]
+checkpoint_sync = true
+
+[mempool]
+eviction_memory_time = "1h"
+tx_cost_limit = 80000000
+
+[tracing]
+use_color = false
+use_journald = false
+
+[sync]
+parallel_cpu_threads = 2

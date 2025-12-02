@@ -11,7 +11,7 @@ Kotlin examples demonstrating the **t2z** library with Zebra regtest.
 From the repository root:
 
 ```bash
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose up -d
 
 # Watch logs for mining progress
@@ -116,13 +116,13 @@ val signed = appendSignature(pczt, 0, signature)
 ### "Connection refused"
 Zebra is not running. Start it with:
 ```bash
-cd infra/zebrad && docker-compose up -d
+cd infra/zebrad-regtest && docker-compose up -d
 ```
 
 ### "No mature UTXOs available"
 Wait for more blocks (101 needed for coinbase maturity). Check progress:
 ```bash
-cd infra/zebrad && docker-compose logs -f
+cd infra/zebrad-regtest && docker-compose logs -f
 ```
 
 ### "Transaction was committed to the best chain"

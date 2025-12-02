@@ -13,7 +13,7 @@ Java examples demonstrating t2z library usage with Zebra regtest.
 
 ```bash
 # From repository root
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose down -v && docker-compose up -d
 
 # Run setup from typescript examples (waits for block 101)
@@ -30,7 +30,7 @@ cd ../../bindings/java/examples/zebrad-t2z
 
 ## Prerequisites
 
-1. **Zebra regtest running** (via docker-compose in `infra/zebrad/`)
+1. **Zebra regtest running** (via docker-compose in `infra/zebrad-regtest/`)
 2. **Java library built** (run `./gradlew build` in `bindings/java/`)
 3. **Rust library built** (run `cargo build --release` in `core/rust/`)
 

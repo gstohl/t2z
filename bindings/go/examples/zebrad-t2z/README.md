@@ -13,7 +13,7 @@ Go examples demonstrating t2z library usage with Zebra regtest.
 
 ```bash
 # From repository root
-cd infra/zebrad
+cd infra/zebrad-regtest
 docker-compose down -v && docker-compose up -d
 
 # Run setup from typescript examples (waits for block 101)
@@ -27,7 +27,7 @@ go run ./1-single-output
 
 ## Prerequisites
 
-1. **Zebra regtest running** (via docker-compose in `infra/zebrad/`)
+1. **Zebra regtest running** (via docker-compose in `infra/zebrad-regtest/`)
 2. **Go library built** (run `go build` in `bindings/go/`)
 3. **Rust library built** (run `cargo build --release` in `core/rust/`)
 
