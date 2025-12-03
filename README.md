@@ -2,6 +2,19 @@
 
 Multi-language library for sending transparent Zcash to shielded Orchard outputs using PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
+## Requirements
+
+| Tool | Version | Required For |
+|------|---------|--------------|
+| **Node.js** | 18+ | Build scripts, TypeScript bindings |
+| **Rust** | 1.75+ | Core library compilation |
+| **Go** | 1.21+ | Go bindings |
+| **Java JDK** | 17+ | Java/Kotlin bindings |
+| **Gradle** | 8.0+ | Java/Kotlin build (wrapper included) |
+
+Optional:
+- **Docker** - For running regtest examples with Zebra
+
 ## Structure
 
 ```
@@ -16,20 +29,32 @@ t2z/
 └── infra/           # Docker infrastructure for regtest
 ```
 
-## Build
+## Scripts
 
-### Development Build (Recommended)
-
-Use the cross-platform Node.js build script to build the Rust library and copy it to all bindings:
+All development scripts are cross-platform Node.js scripts in `scripts/`:
 
 ```bash
+# Build native library and copy to all bindings
 node scripts/build-dev.js
+
+# Run all tests (Rust + all bindings)
+node scripts/test-all.js
+
+# Run only Rust tests
+node scripts/test-all.js --rust-only
+
+# Run only binding tests (skip Rust)
+node scripts/test-all.js --bindings-only
+
+# Clean all build artifacts
+node scripts/clean.js
 ```
 
-This will:
-1. Build the Rust library in release mode
-2. Detect your platform (macOS/Linux/Windows, x64/arm64)
-3. Copy the native library to all binding directories
+### What `build-dev.js` Does
+
+1. Builds the Rust library in release mode
+2. Detects your platform (macOS/Linux/Windows, x64/arm64)
+3. Copies the native library to all binding directories
 
 ### Manual Build
 
