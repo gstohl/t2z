@@ -10,13 +10,28 @@ import koffi from 'koffi';
 import path from 'path';
 import os from 'os';
 
+// Platform directory mapping
+const PLATFORM_DIRS: Record<string, string> = {
+  'darwin-arm64': 'darwin-arm64',
+  'darwin-x64': 'darwin-x64',
+  'linux-x64': 'linux-x64',
+  'linux-arm64': 'linux-arm64',
+  'win32-x64': 'windows-x64',
+};
+
 // Determine the correct library path based on platform
 function getLibraryPath(): string {
   const platform = os.platform();
   const arch = os.arch();
+  const key = `${platform}-${arch}`;
 
-  // Library is in core/rust/target/release relative to bindings/typescript/dist folder
-  const basePath = path.join(__dirname, '..', '..', '..', 'core', 'rust', 'target', 'release');
+  const platformDir = PLATFORM_DIRS[key];
+  if (!platformDir) {
+    throw new Error(`Unsupported platform: ${key}`);
+  }
+
+  // Library is in lib/<platform>/ relative to bindings/typescript/dist folder
+  const basePath = path.join(__dirname, '..', 'lib', platformDir);
 
   if (platform === 'darwin') {
     return path.join(basePath, 'libt2z.dylib');

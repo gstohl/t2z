@@ -27,8 +27,8 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 
-    // Set library path for native library
-    systemProperty("jna.library.path", file("../../core/rust/target/release").absolutePath)
+    // JNA automatically loads from src/main/resources/<platform>/
+    // No need to set jna.library.path when library is in resources
 }
 
 kotlin {

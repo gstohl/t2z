@@ -33,9 +33,9 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
 }
 
-// Set native library path for all Java execution tasks
+// JNA automatically loads from resources/<platform>/ in the t2z library
 tasks.withType(JavaExec).configureEach {
-    systemProperty 'jna.library.path', file('../../../../core/rust/target/release').absolutePath
+    // No need to set jna.library.path when library is in resources
 }
 
 // Register tasks for each example

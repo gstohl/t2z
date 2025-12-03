@@ -33,6 +33,16 @@ yarn-error.log*
 *.so
 *.dll
 
+# Native library directories (populated by scripts/build-dev.js)
+bindings/typescript/lib/
+bindings/go/lib/
+bindings/kotlin/src/main/resources/darwin-*/
+bindings/kotlin/src/main/resources/linux-*/
+bindings/kotlin/src/main/resources/win32-*/
+bindings/java/src/main/resources/darwin-*/
+bindings/java/src/main/resources/linux-*/
+bindings/java/src/main/resources/win32-*/
+
 # Test artifacts
 test-addresses.json
 *.log

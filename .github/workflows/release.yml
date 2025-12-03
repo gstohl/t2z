@@ -1,0 +1,301 @@
+# =============================================================================
+# PROPOSAL: Release Workflow for t2z
+# =============================================================================
+# This workflow is a PROPOSAL and is DISABLED by default.
+# To enable, change the 'on' trigger from 'workflow_dispatch' to 'push: tags'
+#
+# What it does:
+# 1. Builds native Rust library for all platforms (macOS, Linux, Windows)
+# 2. Creates a GitHub Release with all binaries attached
+# 3. Publishes to language-specific package registries (npm, Maven Central)
+# 4. Pushes code to language-specific repos for Go modules
+#
+# Prerequisites:
+# - Secrets: NPM_TOKEN, OSSRH_USERNAME, OSSRH_PASSWORD, MULTI_REPO_TOKEN
+# - Create language repos: t2z-typescript, t2z-go, t2z-kotlin, t2z-java
+# =============================================================================
+
+name: Release
+
+# DISABLED: Change to enable on tag push
+# on:
+#   push:
+#     tags: ['v*']
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip publishing)'
+        required: false
+        default: 'true'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ===========================================================================
+  # Build native libraries for all platforms
+  # ===========================================================================
+  build-native:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: libt2z-darwin-arm64.dylib
+            lib_name: libt2z.dylib
+
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: libt2z-darwin-x64.dylib
+            lib_name: libt2z.dylib
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: libt2z-linux-x64.so
+            lib_name: libt2z.so
+
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            artifact: libt2z-linux-arm64.so
+            lib_name: libt2z.so
+
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: t2z-windows-x64.dll
+            lib_name: t2z.dll
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --manifest-path core/rust/Cargo.toml
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          cp core/rust/target/release/${{ matrix.lib_name }} ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          retention-days: 1
+
+  # ===========================================================================
+  # Create GitHub Release with all binaries
+  # ===========================================================================
+  create-release:
+    name: Create Release
+    needs: build-native
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create Release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+
+  # ===========================================================================
+  # Publish TypeScript package to npm
+  # ===========================================================================
+  publish-npm:
+    name: Publish npm
+    needs: build-native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy libraries to binding
+        run: |
+          mkdir -p bindings/typescript/lib/darwin-arm64
+          mkdir -p bindings/typescript/lib/darwin-x64
+          mkdir -p bindings/typescript/lib/linux-x64
+          mkdir -p bindings/typescript/lib/linux-arm64
+          mkdir -p bindings/typescript/lib/windows-x64
+
+          cp artifacts/libt2z-darwin-arm64.dylib bindings/typescript/lib/darwin-arm64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib bindings/typescript/lib/darwin-x64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so bindings/typescript/lib/linux-x64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so bindings/typescript/lib/linux-arm64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll bindings/typescript/lib/windows-x64/t2z.dll
+
+      - name: Install dependencies
+        working-directory: bindings/typescript
+        run: npm ci
+
+      - name: Build
+        working-directory: bindings/typescript
+        run: npm run build
+
+      - name: Publish
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: bindings/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ===========================================================================
+  # Publish to language-specific Git repos (for Go modules)
+  # ===========================================================================
+  publish-go-repo:
+    name: Publish Go Repo
+    needs: build-native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+        with:
+          path: monorepo
+
+      - name: Checkout Go repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/t2z-go
+          token: ${{ secrets.MULTI_REPO_TOKEN }}
+          path: t2z-go
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy binding code and libraries
+        run: |
+          # Copy Go binding code
+          cp -r monorepo/bindings/go/* t2z-go/
+
+          # Create lib directories
+          mkdir -p t2z-go/lib/darwin-arm64
+          mkdir -p t2z-go/lib/darwin-x64
+          mkdir -p t2z-go/lib/linux-x64
+          mkdir -p t2z-go/lib/linux-arm64
+          mkdir -p t2z-go/lib/windows-x64
+
+          # Copy libraries
+          cp artifacts/libt2z-darwin-arm64.dylib t2z-go/lib/darwin-arm64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib t2z-go/lib/darwin-x64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so t2z-go/lib/linux-x64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so t2z-go/lib/linux-arm64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll t2z-go/lib/windows-x64/t2z.dll
+
+      - name: Push to Go repo
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: t2z-go
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release ${{ github.ref_name }}" || exit 0
+          git tag ${{ github.ref_name }}
+          git push origin main --tags
+
+  # ===========================================================================
+  # Publish Java/Kotlin to Maven Central
+  # ===========================================================================
+  publish-maven:
+    name: Publish Maven Central
+    needs: build-native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy libraries to Kotlin binding
+        run: |
+          mkdir -p bindings/kotlin/src/main/resources/darwin-aarch64
+          mkdir -p bindings/kotlin/src/main/resources/darwin-x86-64
+          mkdir -p bindings/kotlin/src/main/resources/linux-x86-64
+          mkdir -p bindings/kotlin/src/main/resources/linux-aarch64
+          mkdir -p bindings/kotlin/src/main/resources/win32-x86-64
+
+          cp artifacts/libt2z-darwin-arm64.dylib bindings/kotlin/src/main/resources/darwin-aarch64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib bindings/kotlin/src/main/resources/darwin-x86-64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so bindings/kotlin/src/main/resources/linux-x86-64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so bindings/kotlin/src/main/resources/linux-aarch64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll bindings/kotlin/src/main/resources/win32-x86-64/t2z.dll
+
+      - name: Copy libraries to Java binding
+        run: |
+          mkdir -p bindings/java/src/main/resources/darwin-aarch64
+          mkdir -p bindings/java/src/main/resources/darwin-x86-64
+          mkdir -p bindings/java/src/main/resources/linux-x86-64
+          mkdir -p bindings/java/src/main/resources/linux-aarch64
+          mkdir -p bindings/java/src/main/resources/win32-x86-64
+
+          cp artifacts/libt2z-darwin-arm64.dylib bindings/java/src/main/resources/darwin-aarch64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib bindings/java/src/main/resources/darwin-x86-64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so bindings/java/src/main/resources/linux-x86-64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so bindings/java/src/main/resources/linux-aarch64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll bindings/java/src/main/resources/win32-x86-64/t2z.dll
+
+      - name: Build and Publish Kotlin
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: bindings/kotlin
+        run: ./gradlew publish
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+
+      - name: Build and Publish Java
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: bindings/java
+        run: ./gradlew publish
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}

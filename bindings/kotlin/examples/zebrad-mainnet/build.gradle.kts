@@ -26,5 +26,5 @@ application {
 }
 
 tasks.withType<JavaExec> {
-    systemProperty("jna.library.path", file("../../../../core/rust/target/release").absolutePath)
+    // JNA automatically loads from resources/<platform>/ in the t2z library
 }

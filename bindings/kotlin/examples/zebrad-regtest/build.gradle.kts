@@ -50,8 +50,7 @@ listOf(
         mainClass.set("com.zcash.t2z.examples.${mainClassName}Kt")
         classpath = sourceSets["main"].runtimeClasspath
 
-        // Set native library path
-        systemProperty("jna.library.path", file("../../../../core/rust/target/release").absolutePath)
+        // JNA automatically loads from resources/<platform>/ in the t2z library
     }
 }
 

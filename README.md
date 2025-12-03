@@ -18,6 +18,21 @@ t2z/
 
 ## Build
 
+### Development Build (Recommended)
+
+Use the cross-platform Node.js build script to build the Rust library and copy it to all bindings:
+
+```bash
+node scripts/build-dev.js
+```
+
+This will:
+1. Build the Rust library in release mode
+2. Detect your platform (macOS/Linux/Windows, x64/arm64)
+3. Copy the native library to all binding directories
+
+### Manual Build
+
 ```bash
 cd core/rust && cargo build --release
 ```
@@ -27,6 +42,24 @@ Outputs in `core/rust/target/release/`:
 - `libt2z.a` (static)
 
 Header: `core/rust/include/t2z.h`
+
+### Library Locations
+
+After running `build-dev.js`, libraries are placed at:
+
+| Language | Location |
+|----------|----------|
+| TypeScript | `bindings/typescript/lib/<platform>/` |
+| Go | `bindings/go/lib/<platform>/` |
+| Kotlin | `bindings/kotlin/src/main/resources/<jna-platform>/` |
+| Java | `bindings/java/src/main/resources/<jna-platform>/` |
+
+Platform mappings:
+- `darwin-arm64` / `darwin-aarch64` (macOS Apple Silicon)
+- `darwin-x64` / `darwin-x86-64` (macOS Intel)
+- `linux-x64` / `linux-x86-64` (Linux x64)
+- `linux-arm64` / `linux-aarch64` (Linux ARM)
+- `windows-x64` / `win32-x86-64` (Windows x64)
 
 ## Quick Example (TypeScript)
 
@@ -82,6 +115,54 @@ const txBytes = finalizeAndExtract(signed);
 
 - Transparent only: 10,000 zatoshis
 - Transparent → Shielded: 15,000 zatoshis
+
+## Release Workflow (Proposal)
+
+A GitHub Actions workflow is provided in `.github/workflows/release.yml` for automated releases.
+
+### What It Does
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Trigger: git tag v1.0.0                                    │
+├─────────────────────────────────────────────────────────────┤
+│  1. Build native libraries (parallel)                       │
+│     ├── macos-14    → libt2z-darwin-arm64.dylib            │
+│     ├── macos-13    → libt2z-darwin-x64.dylib              │
+│     ├── ubuntu      → libt2z-linux-x64.so                  │
+│     ├── ubuntu-arm  → libt2z-linux-arm64.so                │
+│     └── windows     → t2z-windows-x64.dll                  │
+│                                                             │
+│  2. Create GitHub Release with all binaries                 │
+│                                                             │
+│  3. Publish packages                                        │
+│     ├── npm         → @zypherpunk/t2z                      │
+│     ├── Maven       → com.zcash:t2z-kotlin                 │
+│     ├── Maven       → com.zcash:t2z-java                   │
+│     └── Go repo     → github.com/zypherpunk/t2z-go         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Prerequisites
+
+1. **Create language-specific repos** (for Go modules):
+   - `your-org/t2z-go`
+
+2. **Configure secrets**:
+   - `NPM_TOKEN` - npm publish token
+   - `OSSRH_USERNAME` / `OSSRH_PASSWORD` - Maven Central credentials
+   - `MULTI_REPO_TOKEN` - GitHub PAT with repo scope (for Go repo push)
+
+3. **Enable the workflow**: Edit `.github/workflows/release.yml` and change the trigger from `workflow_dispatch` to:
+   ```yaml
+   on:
+     push:
+       tags: ['v*']
+   ```
+
+### Manual Trigger
+
+The workflow can also be triggered manually via GitHub Actions UI for testing (dry run mode).
 
 ## License
 
