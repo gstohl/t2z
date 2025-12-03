@@ -1,0 +1,22 @@
+{
+  "name": "t2z-mainnet-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate-wallet": "tsx src/generate-wallet.ts",
+    "send": "tsx src/send.ts",
+    "device-a": "tsx src/device-a.ts",
+    "device-b": "tsx src/device-b.ts"
+  },
+  "dependencies": {
+    "t2z": "file:../..",
+    "@noble/secp256k1": "^2.1.0",
+    "@noble/hashes": "^1.4.0",
+    "bip39": "^3.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

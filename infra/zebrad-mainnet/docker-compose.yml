@@ -1,0 +1,19 @@
+services:
+  zebra:
+    build: .
+    container_name: zebra-mainnet
+    ports:
+      - "8232:8232"   # RPC
+      - "8233:8233"   # P2P
+    volumes:
+      - ./zebra-mainnet.toml:/etc/zebra/zebrad.toml:ro
+      - zebra-mainnet-data:/home/zebra/.cache/zebra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8232"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  zebra-mainnet-data:

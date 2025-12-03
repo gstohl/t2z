@@ -5,8 +5,18 @@
 network = "Testnet"
 listen_addr = "0.0.0.0:18233"
 
-# Use default testnet peers (Zebra will discover more via DNS)
-# initial_testnet_peers = []  # Uncomment to use only DNS seeding
+# Known testnet peers for faster sync
+initial_testnet_peers = [
+    "34.23.163.30:18233",
+    "35.224.213.237:18233",
+    "34.67.7.201:18233",
+    "dnsseed.testnet.z.cash:18233",
+    "testnet.seeder.zfnd.org:18233",
+    "testnet.is.yolo.money:18233"
+]
+
+# Increase peer limits
+peerset_initial_target_size = 100
 
 [state]
 cache_dir = "/home/zebra/.cache/zebra"
@@ -14,7 +24,7 @@ ephemeral = false
 
 [rpc]
 listen_addr = "0.0.0.0:18232"
-parallel_cpu_threads = 1
+parallel_cpu_threads = 0
 enable_cookie_auth = false
 
 [consensus]
@@ -29,4 +39,7 @@ use_color = false
 use_journald = false
 
 [sync]
-parallel_cpu_threads = 2
+parallel_cpu_threads = 16
+download_concurrency_limit = 100
+checkpoint_verify_concurrency_limit = 2000
+full_verify_concurrency_limit = 50

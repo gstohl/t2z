@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Clone and build Zebra
 WORKDIR /build
-RUN git clone --depth 1 --branch v2.2.0 https://github.com/ZcashFoundation/zebra.git
+RUN git clone --depth 1 --branch v3.1.0 https://github.com/ZcashFoundation/zebra.git
 WORKDIR /build/zebra
 
 # Build zebrad (standard build for testnet)
