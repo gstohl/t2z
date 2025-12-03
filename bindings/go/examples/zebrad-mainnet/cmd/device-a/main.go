@@ -214,7 +214,6 @@ func main() {
 	fmt.Println("  TRANSACTION BROADCAST SUCCESSFUL!")
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("\nTXID: %s\n", txidResult)
-	fmt.Printf("\nView: https://zcashblockexplorer.com/transactions/%s\n", txidResult)
 	fmt.Println("\nThe private key NEVER touched this device!")
 }
 

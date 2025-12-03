@@ -147,7 +147,6 @@ fun main() {
 
         println("\nTransaction sent!")
         println("TXID: $txid")
-        println("\nView: https://zcashblockexplorer.com/transactions/$txid")
     }
 }
 

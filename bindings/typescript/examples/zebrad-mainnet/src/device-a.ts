@@ -232,7 +232,6 @@ async function main() {
   console.log('  TRANSACTION BROADCAST SUCCESSFUL!');
   console.log('='.repeat(60));
   console.log(`\nTXID: ${txid}`);
-  console.log(`\nView: https://zcashblockexplorer.com/transactions/${txid}`);
   console.log('\nThe private key NEVER touched this device!');
 
   request.free();

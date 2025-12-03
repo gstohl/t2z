@@ -143,7 +143,6 @@ fun main() {
         println("  TRANSACTION BROADCAST SUCCESSFUL!")
         println("=".repeat(60))
         println("\nTXID: $txidResult")
-        println("\nView: https://zcashblockexplorer.com/transactions/$txidResult")
         println("\nThe private key NEVER touched this device!")
     }
 }

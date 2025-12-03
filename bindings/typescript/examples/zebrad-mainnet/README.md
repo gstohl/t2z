@@ -1,11 +1,11 @@
-# Testnet Demo - Mixed T→T+Z
+# Mainnet Examples - TypeScript
 
-Compact example sending to both transparent and shielded addresses on testnet.
+Interactive examples for sending ZEC on mainnet with memo support and hardware wallet simulation.
 
 ## Prerequisites
 
-1. Zebra testnet node running and synced (`infra/zebrad-testnet/`)
-2. Testnet ZEC from [faucet](https://faucet.zecpages.com/)
+1. Zebra mainnet node running and synced (`infra/zebrad-mainnet/`)
+2. Real ZEC in your wallet
 3. Rust library built (`core/rust/`)
 
 ## Setup
@@ -14,27 +14,78 @@ Compact example sending to both transparent and shielded addresses on testnet.
 npm install
 ```
 
-## Usage
+## Scripts
+
+### 1. Generate Wallet
+
+Creates a new wallet and saves credentials to `.env`:
 
 ```bash
-PRIVATE_KEY=<hex> npm run demo
+npm run generate-wallet
 ```
 
-The demo automatically:
-1. Derives your testnet address from the private key
-2. Fetches UTXOs from your local Zebra node
-3. Creates a mixed T→T+Z transaction
-4. Broadcasts it
+Output:
+```
+New wallet generated!
 
-## Example
+Address: t1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Saved to: /path/to/.env
+
+IMPORTANT: Back up your private key securely!
+```
+
+### 2. Interactive Send
+
+Send ZEC to any address (transparent or shielded) with optional memo:
 
 ```bash
-PRIVATE_KEY=e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35 npm run demo
+npm run send
 ```
 
-## Getting Testnet ZEC
+Features:
+- Multiple recipients support
+- Memo support for shielded addresses (up to 512 bytes)
+- Automatic fee calculation (ZIP-317)
+- Balance display
 
-1. Run the demo once to see your address
-2. Go to [faucet.zecpages.com](https://faucet.zecpages.com/)
-3. Request testnet ZEC to your address
-4. Wait for confirmation, then run the demo again
+### 3. Hardware Wallet Simulation
+
+Demonstrates offline signing workflow using two devices:
+
+**Device A** (Online) - Builds transaction, outputs sighash:
+```bash
+npm run device-a
+```
+
+**Device B** (Offline) - Signs sighash with private key:
+```bash
+npm run device-b
+```
+
+Workflow:
+1. Run `device-a`, enter recipient and amount
+2. Copy the SIGHASH to Device B
+3. Run `device-b`, paste the sighash
+4. Copy the SIGNATURE back to Device A
+5. Device A broadcasts the transaction
+
+This simulates how hardware wallets work - the private key never leaves Device B!
+
+## Environment Variables
+
+The `.env` file contains:
+```
+PRIVATE_KEY=<hex>
+PUBLIC_KEY=<hex>
+ADDRESS=<t1...>
+ZEBRA_HOST=localhost
+ZEBRA_PORT=8232
+```
+
+## Fee Calculation
+
+Fees are calculated using ZIP-317:
+- Transparent-only: ~10,000 zatoshis
+- With shielded output: ~15,000 zatoshis
+- Memos don't affect the fee

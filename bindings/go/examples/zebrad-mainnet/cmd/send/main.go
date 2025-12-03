@@ -234,7 +234,6 @@ func main() {
 
 	fmt.Println("\nTransaction sent!")
 	fmt.Printf("TXID: %s\n", txid)
-	fmt.Printf("\nView: https://zcashblockexplorer.com/transactions/%s\n", txid)
 }
 
 type UTXO struct {

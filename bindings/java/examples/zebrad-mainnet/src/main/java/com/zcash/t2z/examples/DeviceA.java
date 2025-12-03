@@ -164,7 +164,6 @@ public class DeviceA {
             System.out.println("  TRANSACTION BROADCAST SUCCESSFUL!");
             System.out.println("=".repeat(60));
             System.out.println("\nTXID: " + txidResult);
-            System.out.println("\nView: https://zcashblockexplorer.com/transactions/" + txidResult);
             System.out.println("\nThe private key NEVER touched this device!");
         }
     }

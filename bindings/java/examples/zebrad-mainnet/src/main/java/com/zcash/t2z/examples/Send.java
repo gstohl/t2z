@@ -171,7 +171,6 @@ public class Send {
 
             System.out.println("\nTransaction sent!");
             System.out.println("TXID: " + txid);
-            System.out.println("\nView: https://zcashblockexplorer.com/transactions/" + txid);
         }
     }
 

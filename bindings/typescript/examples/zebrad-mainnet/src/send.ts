@@ -218,7 +218,6 @@ async function main() {
 
   console.log(`\nTransaction sent!`);
   console.log(`TXID: ${txid}`);
-  console.log(`\nView on explorer: https://zcashblockexplorer.com/transactions/${txid}`);
 
   request.free();
 }
