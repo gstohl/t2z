@@ -127,19 +127,19 @@ A GitHub Actions workflow is provided in `.github/workflows/release.yml` for aut
 │  Trigger: git tag v1.0.0                                    │
 ├─────────────────────────────────────────────────────────────┤
 │  1. Build native libraries (parallel)                       │
-│     ├── macos-14    → libt2z-darwin-arm64.dylib            │
-│     ├── macos-13    → libt2z-darwin-x64.dylib              │
-│     ├── ubuntu      → libt2z-linux-x64.so                  │
-│     ├── ubuntu-arm  → libt2z-linux-arm64.so                │
-│     └── windows     → t2z-windows-x64.dll                  │
+│     ├── macos-14    → libt2z-darwin-arm64.dylib             │
+│     ├── macos-13    → libt2z-darwin-x64.dylib               │
+│     ├── ubuntu      → libt2z-linux-x64.so                   │
+│     ├── ubuntu-arm  → libt2z-linux-arm64.so                 │
+│     └── windows     → t2z-windows-x64.dll                   │
 │                                                             │
 │  2. Create GitHub Release with all binaries                 │
 │                                                             │
 │  3. Publish packages                                        │
-│     ├── npm         → @gstohl/t2z                          │
-│     ├── Maven       → com.zcash:t2z-kotlin                 │
-│     ├── Maven       → com.zcash:t2z-java                   │
-│     └── Go repo     → github.com/gstohl/t2z-go             │
+│     ├── npm         → @gstohl/t2z                           │
+│     ├── Maven       → com.gstohl:t2z-kotlin                 │
+│     ├── Maven       → com.gstohl:t2z-java                   │
+│     └── Go repo     → github.com/gstohl/t2z-go              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
