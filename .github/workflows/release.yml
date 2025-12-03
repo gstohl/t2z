@@ -12,7 +12,7 @@
 #
 # Prerequisites:
 # - Secrets: NPM_TOKEN, OSSRH_USERNAME, OSSRH_PASSWORD, MULTI_REPO_TOKEN
-# - Create language repos: t2z-typescript, t2z-go, t2z-kotlin, t2z-java
+# - Create language repos: github.com/gstohl/t2z-go
 # =============================================================================
 
 name: Release
@@ -192,7 +192,7 @@ jobs:
       - name: Checkout Go repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/t2z-go
+          repository: gstohl/t2z-go
           token: ${{ secrets.MULTI_REPO_TOKEN }}
           path: t2z-go
 

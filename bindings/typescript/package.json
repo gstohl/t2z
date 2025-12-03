@@ -1,7 +1,8 @@
 {
-  "name": "t2z",
+  "name": "@gstohl/t2z",
   "version": "0.1.0",
   "description": "TypeScript/Node.js bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT",
+  "homepage": "https://gstohl.com",
   "publishConfig": {
     "access": "public"
   },
@@ -45,6 +46,7 @@
   },
   "files": [
     "dist",
+    "lib",
     "README.md",
     "LICENSE"
   ]

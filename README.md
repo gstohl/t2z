@@ -136,17 +136,17 @@ A GitHub Actions workflow is provided in `.github/workflows/release.yml` for aut
 │  2. Create GitHub Release with all binaries                 │
 │                                                             │
 │  3. Publish packages                                        │
-│     ├── npm         → @zypherpunk/t2z                      │
+│     ├── npm         → @gstohl/t2z                          │
 │     ├── Maven       → com.zcash:t2z-kotlin                 │
 │     ├── Maven       → com.zcash:t2z-java                   │
-│     └── Go repo     → github.com/zypherpunk/t2z-go         │
+│     └── Go repo     → github.com/gstohl/t2z-go             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Prerequisites
 
 1. **Create language-specific repos** (for Go modules):
-   - `your-org/t2z-go`
+   - `gstohl/t2z-go`
 
 2. **Configure secrets**:
    - `NPM_TOKEN` - npm publish token
