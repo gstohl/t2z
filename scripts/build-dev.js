@@ -14,12 +14,13 @@ const os = require('os');
 const ROOT = path.resolve(__dirname, '..');
 
 // Platform configurations
+// Go uses static libraries (.a), others use dynamic (.dylib/.so/.dll)
 const PLATFORMS = {
-  'darwin-arm64':  { dir: 'darwin-arm64',  jna: 'darwin-aarch64', ext: 'dylib', prefix: 'lib' },
-  'darwin-x64':    { dir: 'darwin-x64',    jna: 'darwin-x86-64',  ext: 'dylib', prefix: 'lib' },
-  'linux-x64':     { dir: 'linux-x64',     jna: 'linux-x86-64',   ext: 'so',    prefix: 'lib' },
-  'linux-arm64':   { dir: 'linux-arm64',   jna: 'linux-aarch64',  ext: 'so',    prefix: 'lib' },
-  'win32-x64':     { dir: 'windows-x64',   jna: 'win32-x86-64',   ext: 'dll',   prefix: ''    },
+  'darwin-arm64':  { dir: 'darwin-arm64',  jna: 'darwin-aarch64', dynExt: 'dylib', staticExt: 'a',   prefix: 'lib' },
+  'darwin-x64':    { dir: 'darwin-x64',    jna: 'darwin-x86-64',  dynExt: 'dylib', staticExt: 'a',   prefix: 'lib' },
+  'linux-x64':     { dir: 'linux-x64',     jna: 'linux-x86-64',   dynExt: 'so',    staticExt: 'a',   prefix: 'lib' },
+  'linux-arm64':   { dir: 'linux-arm64',   jna: 'linux-aarch64',  dynExt: 'so',    staticExt: 'a',   prefix: 'lib' },
+  'win32-x64':     { dir: 'windows-x64',   jna: 'win32-x86-64',   dynExt: 'dll',   staticExt: 'lib', prefix: ''    },
 };
 
 function main() {
@@ -51,24 +52,33 @@ function main() {
   }
   console.log('');
 
-  // 3. Find the built library
-  const libName = `${p.prefix}t2z.${p.ext}`;
-  const src = path.join(ROOT, 'core', 'rust', 'target', 'release', libName);
+  // 3. Find the built libraries
+  const dynLibName = `${p.prefix}t2z.${p.dynExt}`;
+  const staticLibName = `${p.prefix}t2z.${p.staticExt}`;
+  const dynSrc = path.join(ROOT, 'core', 'rust', 'target', 'release', dynLibName);
+  const staticSrc = path.join(ROOT, 'core', 'rust', 'target', 'release', staticLibName);
 
-  if (!fs.existsSync(src)) {
-    console.error(`Library not found: ${src}`);
+  if (!fs.existsSync(dynSrc)) {
+    console.error(`Dynamic library not found: ${dynSrc}`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(staticSrc)) {
+    console.error(`Static library not found: ${staticSrc}`);
     process.exit(1);
   }
 
-  console.log(`Built: ${src}`);
+  console.log(`Built: ${dynSrc}`);
+  console.log(`Built: ${staticSrc}`);
   console.log('');
 
   // 4. Copy to each binding
+  // - Go: static library (single binary, no runtime dependency)
+  // - TypeScript/Kotlin/Java: dynamic library (loaded via FFI)
   const targets = [
-    { path: `bindings/typescript/lib/${p.dir}`, name: libName },
-    { path: `bindings/go/lib/${p.dir}`, name: libName },
-    { path: `bindings/kotlin/src/main/resources/${p.jna}`, name: libName },
-    { path: `bindings/java/src/main/resources/${p.jna}`, name: libName },
+    { path: `bindings/typescript/lib/${p.dir}`, name: dynLibName, src: dynSrc, type: 'dynamic' },
+    { path: `bindings/go/lib/${p.dir}`, name: staticLibName, src: staticSrc, type: 'static' },
+    { path: `bindings/kotlin/src/main/resources/${p.jna}`, name: dynLibName, src: dynSrc, type: 'dynamic' },
+    { path: `bindings/java/src/main/resources/${p.jna}`, name: dynLibName, src: dynSrc, type: 'dynamic' },
   ];
 
   console.log('Copying to bindings:');
@@ -77,21 +87,14 @@ function main() {
     const dest = path.join(dir, target.name);
 
     fs.mkdirSync(dir, { recursive: true });
-    fs.copyFileSync(src, dest);
-    console.log(`  -> ${target.path}/${target.name}`);
-
-    // On macOS, fix the install_name so the library can be loaded from any location
-    if (platform === 'darwin') {
-      try {
-        execSync(`install_name_tool -id "@rpath/${libName}" "${dest}"`, { stdio: 'pipe' });
-      } catch (err) {
-        // Ignore errors - install_name_tool may not be available
-      }
-    }
+    fs.copyFileSync(target.src, dest);
+    console.log(`  -> ${target.path}/${target.name} (${target.type})`);
   }
 
   console.log('');
-  console.log('Done! Native library copied to all bindings.');
+  console.log('Done! Native libraries copied to all bindings.');
+  console.log('  - Go: static library (linked into binary)');
+  console.log('  - TypeScript/Kotlin/Java: dynamic library (loaded at runtime)');
 }
 
 main();

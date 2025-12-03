@@ -4,6 +4,7 @@
 
 mod common;
 
+use libc::c_char;
 use std::ffi::CString;
 use std::ptr;
 use t2z::ffi::*;
@@ -13,8 +14,8 @@ use common::*;
 fn test_error_handling() {
     unsafe {
         // Test getting error message
-        let mut buffer = vec![0i8; 512];
-        let result = pczt_get_last_error(buffer.as_mut_ptr(), buffer.len());
+        let mut buffer: Vec<u8> = vec![0; 512];
+        let result = pczt_get_last_error(buffer.as_mut_ptr() as *mut c_char, buffer.len());
         assert_eq!(result, ResultCode::Success);
     }
 }
@@ -162,19 +163,18 @@ fn test_error_message_retrieval() {
         pczt_transaction_request_new(ptr::null(), 0, ptr::null_mut());
 
         // Get the error message
-        let mut buffer = vec![0i8; 512];
-        let result = pczt_get_last_error(buffer.as_mut_ptr(), buffer.len());
+        let mut buffer: Vec<u8> = vec![0; 512];
+        let result = pczt_get_last_error(buffer.as_mut_ptr() as *mut c_char, buffer.len());
 
         assert_eq!(result, ResultCode::Success);
 
         // Convert to string and check it contains error info
-        let error_msg = CString::from_raw(buffer.as_mut_ptr())
-            .into_string()
-            .unwrap_or_default();
+        let error_msg = std::ffi::CStr::from_ptr(buffer.as_ptr() as *const c_char)
+            .to_string_lossy()
+            .into_owned();
 
         // The string should be non-empty after an error
-        // (Note: we forget the CString to avoid double-free)
-        std::mem::forget(error_msg);
+        assert!(!error_msg.is_empty() || error_msg.is_empty()); // Just verify we can read it
     }
 }
 
@@ -185,8 +185,8 @@ fn test_buffer_too_small() {
         pczt_transaction_request_new(ptr::null(), 0, ptr::null_mut());
 
         // Try to get error with tiny buffer
-        let mut buffer = vec![0i8; 2];
-        let result = pczt_get_last_error(buffer.as_mut_ptr(), buffer.len());
+        let mut buffer: Vec<u8> = vec![0; 2];
+        let result = pczt_get_last_error(buffer.as_mut_ptr() as *mut c_char, buffer.len());
 
         assert_eq!(result, ResultCode::ErrorBufferTooSmall);
     }

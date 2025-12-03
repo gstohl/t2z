@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  linux-build:
+    build:
+      context: ../..
+      dockerfile: infra/linux-build/Dockerfile
+    container_name: t2z-linux-build
