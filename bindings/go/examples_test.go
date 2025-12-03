@@ -87,9 +87,9 @@ func ExampleProposeTransaction() {
 	// Output: PCZT created successfully
 }
 
-// ExampleSerialize demonstrates serializing a PCZT for transmission or storage.
+// ExampleSerializePCZT demonstrates serializing a PCZT for transmission or storage.
 // Follows TypeScript patterns.
-func ExampleSerialize() {
+func ExampleSerializePCZT() {
 	// Match TypeScript amounts
 	inputAmount := uint64(100_000_000) // 1 ZEC
 	paymentAmount := inputAmount / 2   // 50%

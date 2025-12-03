@@ -79,6 +79,15 @@ function main() {
     fs.mkdirSync(dir, { recursive: true });
     fs.copyFileSync(src, dest);
     console.log(`  -> ${target.path}/${target.name}`);
+
+    // On macOS, fix the install_name so the library can be loaded from any location
+    if (platform === 'darwin') {
+      try {
+        execSync(`install_name_tool -id "@rpath/${libName}" "${dest}"`, { stdio: 'pipe' });
+      } catch (err) {
+        // Ignore errors - install_name_tool may not be available
+      }
+    }
   }
 
   console.log('');
