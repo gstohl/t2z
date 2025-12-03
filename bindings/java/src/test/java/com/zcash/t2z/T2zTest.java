@@ -228,11 +228,11 @@ class T2zTest {
                 PCZT proved = T2z.proveTransaction(pczt);
 
                 // Serialize
-                byte[] serialized = T2z.serialize(proved);
+                byte[] serialized = T2z.serializePczt(proved);
                 assertTrue(serialized.length > 0);
 
                 // Parse
-                PCZT parsed = T2z.parse(serialized);
+                PCZT parsed = T2z.parsePczt(serialized);
                 assertNotNull(parsed);
 
                 // Should be able to continue workflow with parsed PCZT

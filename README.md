@@ -103,7 +103,7 @@ const txBytes = finalizeAndExtract(signed);
 | `append_signature` | Add secp256k1 signature (64 bytes) |
 | `combine` | Merge multiple PCZTs (parallel signing) |
 | `finalize_and_extract` | Extract final transaction bytes |
-| `parse` / `serialize` | PCZT serialization for storage/transport |
+| `parse_pczt` / `serialize_pczt` | PCZT serialization for storage/transport |
 
 ## Use Cases
 

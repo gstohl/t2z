@@ -158,8 +158,8 @@ public final class T2z {
      *
      * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
      * On error, the input PCZT is invalidated and cannot be reused.
-     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
-     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
+     * If you need to retry on failure, call {@link #serializePczt(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parsePczt(byte[])}.</p>
      *
      * @param pczt The PCZT to prove (consumed)
      * @return A new PCZT with proofs added
@@ -229,8 +229,8 @@ public final class T2z {
      *
      * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
      * On error, the input PCZT is invalidated and cannot be reused.
-     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
-     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
+     * If you need to retry on failure, call {@link #serializePczt(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parsePczt(byte[])}.</p>
      *
      * @param pczt      The PCZT (consumed)
      * @param index     The input index
@@ -253,8 +253,8 @@ public final class T2z {
      *
      * <p><b>IMPORTANT:</b> This function ALWAYS consumes ALL input PCZTs, even on error.
      * On error, all input PCZTs are invalidated and cannot be reused.
-     * If you need to retry on failure, call {@link #serialize(PCZT)} on each PCZT before
-     * this function to create backups that can be restored with {@link #parse(byte[])}.</p>
+     * If you need to retry on failure, call {@link #serializePczt(PCZT)} on each PCZT before
+     * this function to create backups that can be restored with {@link #parsePczt(byte[])}.</p>
      *
      * @param pczts List of PCZTs to combine (all consumed)
      * @return Combined PCZT
@@ -281,8 +281,8 @@ public final class T2z {
      *
      * <p><b>IMPORTANT:</b> This function ALWAYS consumes the input PCZT, even on error.
      * On error, the input PCZT is invalidated and cannot be reused.
-     * If you need to retry on failure, call {@link #serialize(PCZT)} before this function
-     * to create a backup that can be restored with {@link #parse(byte[])}.</p>
+     * If you need to retry on failure, call {@link #serializePczt(PCZT)} before this function
+     * to create a backup that can be restored with {@link #parsePczt(byte[])}.</p>
      *
      * @param pczt The PCZT (consumed)
      * @return Transaction bytes ready for broadcast
@@ -308,7 +308,7 @@ public final class T2z {
      * @param pczt The PCZT (not consumed)
      * @return Serialized bytes
      */
-    public static byte[] serialize(PCZT pczt) {
+    public static byte[] serializePczt(PCZT pczt) {
         PointerByReference bytesOut = new PointerByReference();
         T2zLib.NativeLongByReference lenOut = new T2zLib.NativeLongByReference();
 
@@ -329,7 +329,7 @@ public final class T2z {
      * @param bytes Serialized PCZT bytes
      * @return Parsed PCZT
      */
-    public static PCZT parse(byte[] bytes) {
+    public static PCZT parsePczt(byte[] bytes) {
         PointerByReference handleOut = new PointerByReference();
         int code = lib.pczt_parse(bytes, new NativeLong(bytes.length), handleOut);
         checkResult(code, "Parse PCZT");

@@ -39,9 +39,20 @@ tasks.withType(JavaExec).configureEach {
 }
 
 // Register tasks for each example
-['Example1SingleOutput', 'Example2MultipleOutputs', 'Example3MultipleInputs',
- 'Example5ShieldedOutput', 'Example6MultipleShielded', 'Example7MixedOutputs'].eachWithIndex { className, idx ->
-    def taskName = "example${idx == 0 ? 1 : idx == 1 ? 2 : idx == 2 ? 3 : idx == 3 ? 5 : idx == 4 ? 6 : 7}"
+def examples = [
+    'setup': 'Setup',
+    'example1': 'Example1SingleOutput',
+    'example2': 'Example2MultipleOutputs',
+    'example3': 'Example3MultipleInputs',
+    'example4': 'Example4AttackScenario',
+    'example5': 'Example5ShieldedOutput',
+    'example6': 'Example6MultipleShielded',
+    'example7': 'Example7MixedOutputs',
+    'example8': 'Example8CombineWorkflow',
+    'example9': 'Example9OfflineSigning'
+]
+
+examples.each { taskName, className ->
     tasks.register(taskName, JavaExec) {
         group = 'examples'
         description = "Run ${className}"
@@ -54,5 +65,5 @@ tasks.withType(JavaExec).configureEach {
 tasks.register('all') {
     group = 'examples'
     description = 'Run all examples in sequence'
-    dependsOn 'example1', 'example2', 'example3', 'example5', 'example6', 'example7'
+    dependsOn 'example1', 'example2', 'example3', 'example4', 'example5', 'example6', 'example7', 'example8', 'example9'
 }

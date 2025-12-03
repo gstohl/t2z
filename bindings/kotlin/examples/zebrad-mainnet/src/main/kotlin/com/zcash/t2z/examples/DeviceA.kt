@@ -103,7 +103,7 @@ fun main() {
         val sighashHex = sighash.toHexA()
 
         // Serialize PCZT
-        val psztBytes = serialize(proved)
+        val psztBytes = serializePczt(proved)
         val tempFile = File(System.getProperty("user.dir"), ".pczt-temp")
         tempFile.writeText(psztBytes.toHexA())
 
@@ -126,7 +126,7 @@ fun main() {
         val sig = sigHex.hexToBytesA()
 
         println("\nFinalizing transaction...")
-        val loadedPczt = parse(tempFile.readText().hexToBytesA())
+        val loadedPczt = parsePczt(tempFile.readText().hexToBytesA())
         val signed = appendSignature(loadedPczt, 0, sig)
 
         print("  Extracting... ")

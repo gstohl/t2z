@@ -24,8 +24,8 @@ import {
   finalizeAndExtract,
   calculateFee,
   TransparentInput,
-  serialize,
-  parse,
+  serializePczt,
+  parsePczt,
 } from 't2z';
 
 const ENV_PATH = path.join(import.meta.dirname, '..', '.env');
@@ -187,7 +187,7 @@ async function main() {
   const sighashHex = sighash.toString('hex');
 
   // Serialize PCZT for later
-  const psztHex = serialize(proved).toString('hex');
+  const psztHex = serializePczt(proved).toString('hex');
 
   console.log('\n' + '='.repeat(60));
   console.log('  SIGHASH READY FOR OFFLINE SIGNING');
@@ -214,7 +214,7 @@ async function main() {
 
   // Load PCZT back and append signature
   console.log('\nFinalizing transaction...');
-  const loadedPczt = parse(Buffer.from(fs.readFileSync(tempFile, 'utf-8'), 'hex'));
+  const loadedPczt = parsePczt(Buffer.from(fs.readFileSync(tempFile, 'utf-8'), 'hex'));
   const signed = appendSignature(loadedPczt, 0, signature);
 
   process.stdout.write('  Extracting... ');

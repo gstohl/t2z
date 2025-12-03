@@ -124,7 +124,7 @@ public class DeviceA {
             String sighashHex = toHex(sighash);
 
             // Serialize PCZT
-            byte[] psztBytes = T2z.serialize(proved);
+            byte[] psztBytes = T2z.serializePczt(proved);
             Path tempFile = Paths.get(System.getProperty("user.dir"), ".pczt-temp");
             Files.writeString(tempFile, toHex(psztBytes));
 
@@ -147,7 +147,7 @@ public class DeviceA {
             byte[] sig = hex(sigHex);
 
             System.out.println("\nFinalizing transaction...");
-            PCZT loadedPczt = T2z.parse(hex(Files.readString(tempFile)));
+            PCZT loadedPczt = T2z.parsePczt(hex(Files.readString(tempFile)));
             PCZT signed = T2z.appendSignature(loadedPczt, 0, sig);
 
             System.out.print("  Extracting... ");

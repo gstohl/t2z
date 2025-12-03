@@ -444,8 +444,8 @@ export function proposeTransactionWithChange(
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call `serialize()` before this function
- * to create a backup that can be restored with `parse()`.
+ * If you need to retry on failure, call `serializePczt()` before this function
+ * to create a backup that can be restored with `parsePczt()`.
  */
 export function proveTransaction(pczt: PCZT): PCZT {
   const handleOut: any[] = [null];
@@ -496,8 +496,8 @@ export function getSighash(pczt: PCZT, index: number): Buffer {
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call `serialize()` before this function
- * to create a backup that can be restored with `parse()`.
+ * If you need to retry on failure, call `serializePczt()` before this function
+ * to create a backup that can be restored with `parsePczt()`.
  */
 export function appendSignature(pczt: PCZT, index: number, signature: Buffer): PCZT {
   if (signature.length !== 64) {
@@ -515,8 +515,8 @@ export function appendSignature(pczt: PCZT, index: number, signature: Buffer): P
  *
  * **IMPORTANT:** This function ALWAYS consumes ALL input PCZTs, even on error.
  * On error, all input PCZTs are invalidated and cannot be reused.
- * If you need to retry on failure, call `serialize()` on each PCZT before
- * this function to create backups that can be restored with `parse()`.
+ * If you need to retry on failure, call `serializePczt()` on each PCZT before
+ * this function to create backups that can be restored with `parsePczt()`.
  */
 export function combine(pczts: PCZT[]): PCZT {
   if (pczts.length === 0) {
@@ -538,8 +538,8 @@ export function combine(pczts: PCZT[]): PCZT {
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call `serialize()` before this function
- * to create a backup that can be restored with `parse()`.
+ * If you need to retry on failure, call `serializePczt()` before this function
+ * to create a backup that can be restored with `parsePczt()`.
  */
 export function finalizeAndExtract(pczt: PCZT): Buffer {
   const bytesOut: any[] = [null];
@@ -560,7 +560,7 @@ export function finalizeAndExtract(pczt: PCZT): Buffer {
 /**
  * Serialize PCZT to bytes
  */
-export function serialize(pczt: PCZT): Buffer {
+export function serializePczt(pczt: PCZT): Buffer {
   const bytesOut: any[] = [null];
   const lenOut: number[] = [0];
 
@@ -579,7 +579,7 @@ export function serialize(pczt: PCZT): Buffer {
 /**
  * Parse PCZT from bytes
  */
-export function parse(bytes: Buffer): PCZT {
+export function parsePczt(bytes: Buffer): PCZT {
   const handleOut: any[] = [null];
   const code = pczt_parse(bytes, bytes.length, handleOut);
   checkResult(code, 'Parse PCZT');

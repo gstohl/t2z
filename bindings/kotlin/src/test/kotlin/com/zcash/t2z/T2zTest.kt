@@ -227,11 +227,11 @@ class T2zTest {
                 val proved = proveTransaction(pczt)
 
                 // Serialize
-                val serialized = serialize(proved)
+                val serialized = serializePczt(proved)
                 assertTrue(serialized.isNotEmpty())
 
                 // Parse
-                val parsed = parse(serialized)
+                val parsed = parsePczt(serialized)
                 assertNotNull(parsed)
 
                 // Should be able to continue workflow with parsed PCZT

@@ -119,7 +119,7 @@ func ExampleSerialize() {
 	pczt, _ := t2z.ProposeTransaction(inputs, request)
 
 	// Serialize PCZT (does not consume it)
-	pcztBytes, err := t2z.Serialize(pczt)
+	pcztBytes, err := t2z.SerializePCZT(pczt)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -133,9 +133,9 @@ func ExampleSerialize() {
 
 // ExampleParse demonstrates parsing a serialized PCZT.
 // Follows TypeScript patterns.
-func ExampleParse() {
+func ExampleParsePCZT() {
 	// Assume we have serialized PCZT bytes (e.g., from hardware wallet)
-	// This would come from Serialize() in production
+	// This would come from SerializePCZT() in production
 	pcztBytesHex := "..." // Placeholder
 
 	pcztBytes, _ := hex.DecodeString(pcztBytesHex)
@@ -168,12 +168,12 @@ func ExampleParse() {
 		}
 
 		pczt, _ := t2z.ProposeTransaction(inputs, request)
-		pcztBytes, _ = t2z.Serialize(pczt)
+		pcztBytes, _ = t2z.SerializePCZT(pczt)
 		pczt.Free()
 	}
 
 	// Parse PCZT from bytes
-	pczt, err := t2z.Parse(pcztBytes)
+	pczt, err := t2z.ParsePCZT(pcztBytes)
 	if err != nil {
 		log.Fatal(err)
 	}

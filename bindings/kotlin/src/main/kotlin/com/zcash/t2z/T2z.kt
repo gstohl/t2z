@@ -342,8 +342,8 @@ fun proposeTransactionWithChange(
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call [serialize] before this function
- * to create a backup that can be restored with [parse].
+ * If you need to retry on failure, call [serializePczt] before this function
+ * to create a backup that can be restored with [parsePczt].
  */
 fun proveTransaction(pczt: PCZT): PCZT {
     val handleOut = PointerByReference()
@@ -399,8 +399,8 @@ fun getSighash(pczt: PCZT, index: Int): ByteArray {
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call [serialize] before this function
- * to create a backup that can be restored with [parse].
+ * If you need to retry on failure, call [serializePczt] before this function
+ * to create a backup that can be restored with [parsePczt].
  */
 fun appendSignature(pczt: PCZT, index: Int, signature: ByteArray): PCZT {
     require(signature.size == 64) { "Invalid signature length: expected 64, got ${signature.size}" }
@@ -436,8 +436,8 @@ fun combine(pczts: List<PCZT>): PCZT {
  *
  * **IMPORTANT:** This function ALWAYS consumes the input PCZT, even on error.
  * On error, the input PCZT is invalidated and cannot be reused.
- * If you need to retry on failure, call [serialize] before this function
- * to create a backup that can be restored with [parse].
+ * If you need to retry on failure, call [serializePczt] before this function
+ * to create a backup that can be restored with [parsePczt].
  */
 fun finalizeAndExtract(pczt: PCZT): ByteArray {
     val bytesOut = PointerByReference()
@@ -457,7 +457,7 @@ fun finalizeAndExtract(pczt: PCZT): ByteArray {
 /**
  * Serialize PCZT to bytes
  */
-fun serialize(pczt: PCZT): ByteArray {
+fun serializePczt(pczt: PCZT): ByteArray {
     val bytesOut = PointerByReference()
     val lenOut = NativeLongByReference()
 
@@ -475,7 +475,7 @@ fun serialize(pczt: PCZT): ByteArray {
 /**
  * Parse PCZT from bytes
  */
-fun parse(bytes: ByteArray): PCZT {
+fun parsePczt(bytes: ByteArray): PCZT {
     val handleOut = PointerByReference()
     val code = lib.pczt_parse(bytes, NativeLong(bytes.size.toLong()), handleOut)
     checkResult(code, "Parse PCZT")

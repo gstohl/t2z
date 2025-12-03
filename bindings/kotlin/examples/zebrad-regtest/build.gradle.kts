@@ -42,7 +42,9 @@ listOf(
     "example4" to "Example4AttackScenario",
     "example5" to "Example5ShieldedOutput",
     "example6" to "Example6MultipleShielded",
-    "example7" to "Example7MixedOutputs"
+    "example7" to "Example7MixedOutputs",
+    "example8" to "Example8CombineWorkflow",
+    "example9" to "Example9OfflineSigning"
 ).forEach { (taskName, mainClassName) ->
     tasks.register<JavaExec>(taskName) {
         group = "examples"
@@ -58,5 +60,5 @@ listOf(
 tasks.register("all") {
     group = "examples"
     description = "Run all examples in sequence"
-    dependsOn("example1", "example2", "example3", "example4", "example5", "example6", "example7")
+    dependsOn("example1", "example2", "example3", "example4", "example5", "example6", "example7", "example8", "example9")
 }

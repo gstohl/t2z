@@ -398,8 +398,8 @@ func ProposeTransactionWithChange(inputs []TransparentInput, request *Transactio
 //
 // IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
 // On error, the input PCZT is invalidated and cannot be reused.
-// If you need to retry on failure, call Serialize() before this function
-// to create a backup that can be restored with Parse().
+// If you need to retry on failure, call SerializePCZT() before this function
+// to create a backup that can be restored with ParsePCZT().
 //
 // Returns a new PCZT with proofs added.
 func ProveTransaction(pczt *PCZT) (*PCZT, error) {
@@ -459,8 +459,8 @@ func GetSighash(pczt *PCZT, inputIndex uint) ([32]byte, error) {
 //
 // IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
 // On error, the input PCZT is invalidated and cannot be reused.
-// If you need to retry on failure, call Serialize() before this function
-// to create a backup that can be restored with Parse().
+// If you need to retry on failure, call SerializePCZT() before this function
+// to create a backup that can be restored with ParsePCZT().
 //
 // Parameters:
 //   - pczt: The PCZT to add the signature to
@@ -500,8 +500,8 @@ func AppendSignature(pczt *PCZT, inputIndex uint, signature [64]byte) (*PCZT, er
 //
 // IMPORTANT: This function ALWAYS consumes the input PCZT, even on error.
 // On error, the input PCZT is invalidated and cannot be reused.
-// If you need to retry on failure, call Serialize() before this function
-// to create a backup that can be restored with Parse().
+// If you need to retry on failure, call SerializePCZT() before this function
+// to create a backup that can be restored with ParsePCZT().
 //
 // Returns the transaction bytes or an error.
 func FinalizeAndExtract(pczt *PCZT) ([]byte, error) {
@@ -534,13 +534,13 @@ func FinalizeAndExtract(pczt *PCZT) ([]byte, error) {
 	return result, nil
 }
 
-// Parse parses a PCZT from bytes.
+// ParsePCZT parses a PCZT from bytes.
 //
 // This is useful for receiving PCZTs that were serialized by another process
 // or system (e.g., from a hardware wallet or remote signer).
 //
 // Returns the parsed PCZT or an error.
-func Parse(pcztBytes []byte) (*PCZT, error) {
+func ParsePCZT(pcztBytes []byte) (*PCZT, error) {
 	if len(pcztBytes) == 0 {
 		return nil, errors.New("empty PCZT bytes")
 	}
@@ -559,13 +559,13 @@ func Parse(pcztBytes []byte) (*PCZT, error) {
 	return newPCZT(handle), nil
 }
 
-// Serialize serializes a PCZT to bytes.
+// SerializePCZT serializes a PCZT to bytes.
 //
 // This is useful for transmitting PCZTs to another process or system
 // (e.g., to a hardware wallet or remote signer).
 //
 // Returns the serialized bytes or an error.
-func Serialize(pczt *PCZT) ([]byte, error) {
+func SerializePCZT(pczt *PCZT) ([]byte, error) {
 	if pczt == nil || pczt.handle == nil {
 		return nil, errors.New("invalid PCZT")
 	}
@@ -599,8 +599,8 @@ func Serialize(pczt *PCZT) ([]byte, error) {
 //
 // IMPORTANT: This function ALWAYS consumes ALL input PCZTs, even on error.
 // On error, all input PCZTs are invalidated and cannot be reused.
-// If you need to retry on failure, call Serialize() on each PCZT before
-// this function to create backups that can be restored with Parse().
+// If you need to retry on failure, call SerializePCZT() on each PCZT before
+// this function to create backups that can be restored with ParsePCZT().
 //
 // Parameters:
 //   - pczts: Array of PCZTs to combine

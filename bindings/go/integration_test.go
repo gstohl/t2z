@@ -206,7 +206,7 @@ func TestPCZTSerialization(t *testing.T) {
 	}
 
 	// Serialize (does not consume the PCZT)
-	serialized, err := Serialize(pczt)
+	serialized, err := SerializePCZT(pczt)
 	if err != nil {
 		t.Fatalf("Failed to serialize PCZT: %v", err)
 	}
@@ -220,14 +220,14 @@ func TestPCZTSerialization(t *testing.T) {
 	}
 
 	// Parse
-	parsed, err := Parse(serialized)
+	parsed, err := ParsePCZT(serialized)
 	if err != nil {
 		t.Fatalf("Failed to parse PCZT: %v", err)
 	}
 	t.Log("✓ PCZT parsed successfully")
 
 	// Serialize again to verify round-trip
-	reserialized, err := Serialize(parsed)
+	reserialized, err := SerializePCZT(parsed)
 	if err != nil {
 		t.Fatalf("Failed to re-serialize PCZT: %v", err)
 	}

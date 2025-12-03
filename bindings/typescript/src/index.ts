@@ -70,8 +70,8 @@ export {
   appendSignature,
   combine,
   finalizeAndExtract,
-  serialize,
-  parse,
+  serializePczt,
+  parsePczt,
   calculateFee,
 } from './lib';
 

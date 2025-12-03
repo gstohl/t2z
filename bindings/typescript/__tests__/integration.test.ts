@@ -10,8 +10,8 @@ import {
   getSighash,
   appendSignature,
   finalizeAndExtract,
-  serialize,
-  parse,
+  serializePczt,
+  parsePczt,
   verifyBeforeSigning,
   signMessage,
 } from '../src';
@@ -209,11 +209,11 @@ describe('t2z TypeScript Bindings', () => {
       const proved = proveTransaction(pczt);
 
       // Serialize
-      const serialized = serialize(proved);
+      const serialized = serializePczt(proved);
       expect(serialized.length).toBeGreaterThan(0);
 
       // Parse
-      const parsed = parse(serialized);
+      const parsed = parsePczt(serialized);
       expect(parsed).toBeDefined();
 
       // Should be able to continue workflow with parsed PCZT

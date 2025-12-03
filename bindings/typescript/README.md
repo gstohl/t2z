@@ -70,7 +70,7 @@ See [root README](../README.md) for full API documentation.
 | `appendSignature(pczt, index, sig)` | Add 64-byte signature |
 | `combine(pczts)` | Merge multiple PCZTs |
 | `finalizeAndExtract(pczt)` | Extract transaction bytes |
-| `parse(bytes)` / `serialize(pczt)` | PCZT serialization |
+| `parsePczt(bytes)` / `serializePczt(pczt)` | PCZT serialization |
 | `signMessage(privKey, hash)` | secp256k1 signing utility |
 
 ## Types

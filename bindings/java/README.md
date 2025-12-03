@@ -64,7 +64,7 @@ See [root README](../README.md) for full API documentation.
 | `T2z.appendSignature(pczt, index, sig)` | Add 64-byte signature |
 | `T2z.combine(pczts)` | Merge multiple PCZTs |
 | `T2z.finalizeAndExtract(pczt)` | Extract transaction bytes |
-| `T2z.parse(bytes)` / `T2z.serialize(pczt)` | PCZT serialization |
+| `T2z.parsePczt(bytes)` / `T2z.serializePczt(pczt)` | PCZT serialization |
 | `Signing.signMessage(privKey, hash)` | secp256k1 signing utility |
 
 ## Types

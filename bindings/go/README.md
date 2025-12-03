@@ -73,7 +73,7 @@ See [root README](../README.md) for full API documentation.
 | `AppendSignature` | Add 64-byte signature |
 | `Combine` | Merge multiple PCZTs |
 | `FinalizeAndExtract` | Extract transaction bytes |
-| `Parse` / `Serialize` | PCZT serialization |
+| `ParsePCZT` / `SerializePCZT` | PCZT serialization |
 
 ## Types
 

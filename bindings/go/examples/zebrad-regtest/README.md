@@ -44,6 +44,8 @@ go run ./4-attack-scenario    # Attack detection - PCZT verification
 go run ./5-shielded-output    # Single shielded output (T→Z)
 go run ./6-multiple-shielded  # Multiple shielded outputs (T→Z×2)
 go run ./7-mixed-outputs      # Mixed transparent + shielded (T→T+Z)
+go run ./8-combine-workflow   # Combine workflow (parallel signing)
+go run ./9-offline-signing    # Offline signing (hardware wallet)
 ```
 
 ## Examples Overview
@@ -57,11 +59,13 @@ go run ./7-mixed-outputs      # Mixed transparent + shielded (T→T+Z)
 | 5 | Transparent to shielded (Orchard) |
 | 6 | Multiple shielded recipients |
 | 7 | Mixed transparent + shielded outputs |
+| 8 | Combine workflow - parallel signing by multiple parties |
+| 9 | Offline signing - hardware wallet / air-gapped device |
 
 ## Project Structure
 
 ```
-go/examples/zebrad-t2z/
+go/examples/zebrad-regtest/
 ├── 1-single-output/main.go
 ├── 2-multiple-outputs/main.go
 ├── 3-utxo-consolidation/main.go
@@ -69,5 +73,7 @@ go/examples/zebrad-t2z/
 ├── 5-shielded-output/main.go
 ├── 6-multiple-shielded/main.go
 ├── 7-mixed-outputs/main.go
+├── 8-combine-workflow/main.go
+├── 9-offline-signing/main.go
 └── README.md
 ```

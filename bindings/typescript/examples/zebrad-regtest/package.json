@@ -12,7 +12,9 @@
     "example:5": "tsx src/examples/5-shielded-output.ts",
     "example:6": "tsx src/examples/6-multiple-shielded.ts",
     "example:7": "tsx src/examples/7-mixed-transparent-shielded.ts",
-    "all": "npm run example:1 && npm run example:2 && npm run example:3 && npm run example:4 && npm run example:5 && npm run example:6 && npm run example:7"
+    "example:8": "tsx src/examples/8-combine-workflow.ts",
+    "example:9": "tsx src/examples/9-offline-signing.ts",
+    "all": "npm run example:1 && npm run example:2 && npm run example:3 && npm run example:4 && npm run example:5 && npm run example:6 && npm run example:7 && npm run example:8 && npm run example:9"
   },
   "dependencies": {
     "t2z": "file:../..",

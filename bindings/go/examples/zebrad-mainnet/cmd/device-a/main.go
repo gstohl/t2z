@@ -160,7 +160,7 @@ func main() {
 	sighashHex := hex.EncodeToString(sighash[:])
 
 	// Serialize PCZT
-	psztBytes, _ := t2z.Serialize(proved)
+	psztBytes, _ := t2z.SerializePCZT(proved)
 	psztHex := hex.EncodeToString(psztBytes)
 
 	// Save to temp file
@@ -192,7 +192,7 @@ func main() {
 	// Load PCZT and finalize
 	fmt.Println("\nFinalizing transaction...")
 	psztData, _ := os.ReadFile(tempFile)
-	loadedPczt, _ := t2z.Parse(mustHex(string(psztData)))
+	loadedPczt, _ := t2z.ParsePCZT(mustHex(string(psztData)))
 	signed, _ := t2z.AppendSignature(loadedPczt, 0, sig)
 
 	fmt.Print("  Extracting... ")
