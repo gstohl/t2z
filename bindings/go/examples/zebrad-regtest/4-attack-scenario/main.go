@@ -6,70 +6,50 @@
 // - Show verification catching the attack
 //
 // This is a DEMO showing why verification is critical!
+// This example does NOT broadcast any transactions.
 //
-// Run with: go run ./examples/zebrad/example4_attack_scenario.go
+// Run with: go run ./4-attack-scenario
 
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"strings"
+	"os"
+	"path/filepath"
 
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	t2z "github.com/gstohl/t2z/go"
-	"golang.org/x/crypto/ripemd160"
+	"github.com/gstohl/t2z/go/examples/zebrad-regtest/common"
 )
-
-func createTestKeypair4() ([]byte, []byte) {
-	privateKeyHex := "e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35"
-	privateKeyBytes, _ := hex.DecodeString(privateKeyHex)
-
-	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
-	pubKeyBytes := privKey.PubKey().SerializeCompressed()
-
-	return privateKeyBytes, pubKeyBytes
-}
-
-func hash160_4(data []byte) []byte {
-	sha256Hash := sha256.Sum256(data)
-	ripemd160Hasher := ripemd160.New()
-	ripemd160Hasher.Write(sha256Hash[:])
-	return ripemd160Hasher.Sum(nil)
-}
-
-func createP2PKHScript4(pubkey []byte) []byte {
-	pubkeyHash := hash160_4(pubkey)
-	script := make([]byte, 25)
-	script[0] = 0x76
-	script[1] = 0xa9
-	script[2] = 0x14
-	copy(script[3:23], pubkeyHash)
-	script[23] = 0x88
-	script[24] = 0xac
-	return script
-}
-
-func zatoshiToZec4(zatoshi uint64) string {
-	return fmt.Sprintf("%.8f", float64(zatoshi)/100_000_000)
-}
 
 func main() {
 	fmt.Println()
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  EXAMPLE 4: ATTACK SCENARIO - PCZT Malleation Detection")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	fmt.Println("WARNING: This demonstrates a security feature!")
 	fmt.Println("   This example shows why you MUST verify PCZTs before signing.")
 	fmt.Println()
 
-	_, pubkey := createTestKeypair4()
+	// Set data directory relative to this script
+	exe, _ := os.Executable()
+	dataDir := filepath.Join(filepath.Dir(exe), "..", "data")
+	common.SetDataDir(dataDir)
+
+	// Create Zebra client
+	client := common.NewZebraClient()
+
+	// Load test data
+	testData, err := common.LoadTestData()
+	if err != nil {
+		common.PrintError("Failed to load test data", err)
+		fmt.Println("Please run setup first: go run ./setup")
+		os.Exit(1)
+	}
 
 	// Addresses
-	victimAddress := "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma"
+	victimAddress := testData.Transparent.Address
 	attackerAddress := "tmBsTi2xWTjUdEXnuTceL7fecEQKeWi4vxA"
 
 	fmt.Println("Scenario Setup:")
@@ -77,39 +57,40 @@ func main() {
 	fmt.Printf("  Legitimate recipient: %s\n", victimAddress)
 	fmt.Printf("  Attacker's address: %s\n\n", attackerAddress)
 
-	// Create mock UTXO
-	var txid [32]byte
-	copy(txid[:], []byte("example4_attack_scenario_txid00"))
-	scriptPubKey := createP2PKHScript4(pubkey)
-
-	inputAmount := uint64(100_000_000) // 1 ZEC
-
-	inputs := []t2z.TransparentInput{
-		{
-			Pubkey:       pubkey,
-			TxID:         txid,
-			Vout:         0,
-			Amount:       inputAmount,
-			ScriptPubKey: scriptPubKey,
-		},
+	// Fetch mature coinbase UTXOs
+	fmt.Println("Fetching mature coinbase UTXOs...")
+	utxos, err := common.GetMatureCoinbaseUtxos(client, common.TEST_KEYPAIR, 5)
+	if err != nil {
+		common.PrintError("Failed to get UTXOs", err)
+		os.Exit(1)
 	}
 
-	fmt.Printf("Using UTXO: %s ZEC\n\n", zatoshiToZec4(inputAmount))
+	if len(utxos) < 5 {
+		common.PrintError("Insufficient UTXOs", fmt.Errorf("need at least 5 mature UTXOs, got %d", len(utxos)))
+		os.Exit(1)
+	}
+
+	inputs := utxos[:5]
+	var totalInput uint64
+	for _, u := range inputs {
+		totalInput += u.Amount
+	}
+	fmt.Printf("  Using %d UTXOs totaling: %s ZEC\n\n", len(inputs), common.ZatoshiToZec(totalInput))
 
 	// SCENARIO 1: Legitimate Transaction
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  SCENARIO 1: Legitimate Transaction")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
-	paymentAmount := inputAmount / 2 // 50%
+	paymentAmount := totalInput / 2 // 50%
 
 	legitimatePayments := []t2z.Payment{
 		{Address: victimAddress, Amount: paymentAmount},
 	}
 
 	fmt.Println("User creates legitimate payment:")
-	fmt.Printf("   Send %s ZEC -> %s...\n\n", zatoshiToZec4(paymentAmount), victimAddress[:30])
+	fmt.Printf("   Send %s ZEC -> %s...\n\n", common.ZatoshiToZec(paymentAmount), victimAddress[:30])
 
 	legitimateRequest, _ := t2z.NewTransactionRequest(legitimatePayments)
 	defer legitimateRequest.Free()
@@ -144,15 +125,15 @@ func main() {
 	fmt.Println()
 
 	// SCENARIO 2: Attack - Wrong Payment Amount
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  SCENARIO 2: Attack - Wrong Payment Amount")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	fmt.Println("ATTACK: Attacker intercepts PCZT and creates different request")
 	wrongAmount := paymentAmount * 2
 	fmt.Printf("   Attacker claims payment is %s ZEC (instead of %s ZEC)\n\n",
-		zatoshiToZec4(wrongAmount), zatoshiToZec4(paymentAmount))
+		common.ZatoshiToZec(wrongAmount), common.ZatoshiToZec(paymentAmount))
 
 	attackedPayments1 := []t2z.Payment{
 		{Address: victimAddress, Amount: wrongAmount},
@@ -173,9 +154,9 @@ func main() {
 	fmt.Println()
 
 	// SCENARIO 3: Attack - Wrong Recipient
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  SCENARIO 3: Attack - Wrong Recipient")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	fmt.Println("ATTACK: Attacker replaces recipient with their own address")
@@ -200,9 +181,9 @@ func main() {
 	fmt.Println()
 
 	// SCENARIO 4: Attack - Lower Amount
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  SCENARIO 4: Attack - Different Payment Amount (Lower)")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	fmt.Println("ATTACK: Attacker claims user only wants to send half the amount")
@@ -230,5 +211,8 @@ func main() {
 	// Clean up the original PCZT
 	proved.Free()
 
-	fmt.Println("KEY TAKEAWAY: Always call VerifyBeforeSigning() before signing!\n")
+	fmt.Println("KEY TAKEAWAY: Always call VerifyBeforeSigning() before signing!")
+	fmt.Println()
+	fmt.Println("NOTE: This example did NOT broadcast any transactions.")
+	fmt.Println("      UTXOs are still available for other examples.\n")
 }

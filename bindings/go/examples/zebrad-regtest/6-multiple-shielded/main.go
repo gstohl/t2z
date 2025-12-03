@@ -1,136 +1,106 @@
 // Example 6: Multiple Shielded Outputs (T→Z×2)
 //
 // Demonstrates sending to multiple shielded recipients:
-// - Use a transparent UTXO as input
+// - Use transparent UTXOs as input
 // - Send to two different unified addresses with Orchard receivers
 // - Shows how the library handles multiple Orchard actions
 //
-// Note: We use the same Orchard address twice with different amounts
-// to demonstrate multiple shielded outputs.
+// IMPORTANT: Regtest cannot verify shielded outputs (no wallet).
+// This example creates and signs the transaction but does NOT broadcast it.
 //
-// Run with: go run ./examples/zebrad/example6_multiple_shielded.go
+// Run with: go run ./6-multiple-shielded
 
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
-	"strings"
+	"os"
+	"path/filepath"
 
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	t2z "github.com/gstohl/t2z/go"
-	"golang.org/x/crypto/ripemd160"
+	"github.com/gstohl/t2z/go/examples/zebrad-regtest/common"
 )
 
 // Deterministic mainnet unified addresses with Orchard receivers
 // Generated from SpendingKey::from_bytes([42u8; 32]) and [43u8; 32]
-const shieldedAddress6_1 = "u1eq7cm60un363n2sa862w4t5pq56tl5x0d7wqkzhhva0sxue7kqw85haa6w6xsz8n8ujmcpkzsza8knwgglau443s7ljdgu897yrvyhhz"
+const shieldedAddress1 = "u1eq7cm60un363n2sa862w4t5pq56tl5x0d7wqkzhhva0sxue7kqw85haa6w6xsz8n8ujmcpkzsza8knwgglau443s7ljdgu897yrvyhhz"
 
 // Using same address for simplicity - in real usage these would be different recipients
-const shieldedAddress6_2 = "u1eq7cm60un363n2sa862w4t5pq56tl5x0d7wqkzhhva0sxue7kqw85haa6w6xsz8n8ujmcpkzsza8knwgglau443s7ljdgu897yrvyhhz"
-
-func createTestKeypair6() ([]byte, []byte) {
-	privateKeyHex := "e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35"
-	privateKeyBytes, _ := hex.DecodeString(privateKeyHex)
-
-	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
-	pubKeyBytes := privKey.PubKey().SerializeCompressed()
-
-	return privateKeyBytes, pubKeyBytes
-}
-
-func hash160_6(data []byte) []byte {
-	sha256Hash := sha256.Sum256(data)
-	ripemd160Hasher := ripemd160.New()
-	ripemd160Hasher.Write(sha256Hash[:])
-	return ripemd160Hasher.Sum(nil)
-}
-
-func createP2PKHScript6(pubkey []byte) []byte {
-	pubkeyHash := hash160_6(pubkey)
-	script := make([]byte, 25)
-	script[0] = 0x76
-	script[1] = 0xa9
-	script[2] = 0x14
-	copy(script[3:23], pubkeyHash)
-	script[23] = 0x88
-	script[24] = 0xac
-	return script
-}
-
-func signMessage6(privateKey []byte, message [32]byte) [64]byte {
-	privKey := secp256k1.PrivKeyFromBytes(privateKey)
-	compact := ecdsa.SignCompact(privKey, message[:], true)
-
-	var sigBytes [64]byte
-	copy(sigBytes[:], compact[1:])
-	return sigBytes
-}
-
-func zatoshiToZec6(zatoshi uint64) string {
-	return fmt.Sprintf("%.8f", float64(zatoshi)/100_000_000)
-}
+const shieldedAddress2 = "u1eq7cm60un363n2sa862w4t5pq56tl5x0d7wqkzhhva0sxue7kqw85haa6w6xsz8n8ujmcpkzsza8knwgglau443s7ljdgu897yrvyhhz"
 
 func main() {
 	fmt.Println()
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  EXAMPLE 6: MULTIPLE SHIELDED OUTPUTS (T->Z x2)")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
-	privateKey, pubkey := createTestKeypair6()
+	// Set data directory relative to this script
+	exe, _ := os.Executable()
+	dataDir := filepath.Join(filepath.Dir(exe), "..", "data")
+	common.SetDataDir(dataDir)
+
+	// Create Zebra client
+	client := common.NewZebraClient()
+
+	// Load test data
+	testData, err := common.LoadTestData()
+	if err != nil {
+		common.PrintError("Failed to load test data", err)
+		fmt.Println("Please run setup first: go run ./setup")
+		os.Exit(1)
+	}
 
 	fmt.Println("Configuration:")
-	fmt.Printf("  Source pubkey: %s...\n", hex.EncodeToString(pubkey)[:32])
-	fmt.Printf("  Recipient 1 (shielded): %s...\n", shieldedAddress6_1[:25])
-	fmt.Printf("  Recipient 2 (shielded): %s...\n", shieldedAddress6_2[:25])
+	fmt.Printf("  Source address: %s\n", testData.Transparent.Address)
+	fmt.Printf("  Recipient 1 (shielded): %s...\n", shieldedAddress1[:25])
+	fmt.Printf("  Recipient 2 (shielded): %s...\n", shieldedAddress2[:25])
 	fmt.Println("  Note: Both are Orchard addresses (u1... prefix)")
 	fmt.Println()
 
-	// Create mock UTXO
-	var txid [32]byte
-	copy(txid[:], []byte("example6_multiple_shielded_tx00"))
-	scriptPubKey := createP2PKHScript6(pubkey)
-
-	inputAmount := uint64(100_000_000) // 1 ZEC
-
-	inputs := []t2z.TransparentInput{
-		{
-			Pubkey:       pubkey,
-			TxID:         txid,
-			Vout:         0,
-			Amount:       inputAmount,
-			ScriptPubKey: scriptPubKey,
-		},
+	// Fetch mature coinbase UTXOs
+	fmt.Println("Fetching mature coinbase UTXOs...")
+	utxos, err := common.GetMatureCoinbaseUtxos(client, common.TEST_KEYPAIR, 6)
+	if err != nil {
+		common.PrintError("Failed to get UTXOs", err)
+		os.Exit(1)
 	}
 
-	fmt.Printf("Using UTXO: %s ZEC\n\n", zatoshiToZec6(inputAmount))
+	if len(utxos) < 5 {
+		common.PrintError("Insufficient UTXOs", fmt.Errorf("need at least 5 mature UTXOs, got %d", len(utxos)))
+		os.Exit(1)
+	}
+
+	inputs := utxos[:5]
+	var totalInput uint64
+	for _, u := range inputs {
+		totalInput += u.Amount
+	}
+	fmt.Printf("  Selected %d UTXOs totaling: %s ZEC\n\n", len(inputs), common.ZatoshiToZec(totalInput))
 
 	// Create two shielded payments
-	// Calculate fee: 1 input, 1 transparent change, 2 orchard outputs
-	fee := t2z.CalculateFee(1, 1, 2)
-	availableForPayments := inputAmount - fee
+	// Calculate fee: inputs, 1 transparent change, 2 orchard outputs
+	fee := t2z.CalculateFee(len(inputs), 1, 2)
+	availableForPayments := totalInput - fee
 	payment1Amount := availableForPayments / 3 // ~33%
 	payment2Amount := availableForPayments / 3 // ~33%
 	// Remaining ~33% goes to change
 
 	payments := []t2z.Payment{
-		{Address: shieldedAddress6_1, Amount: payment1Amount},
-		{Address: shieldedAddress6_2, Amount: payment2Amount},
+		{Address: shieldedAddress1, Amount: payment1Amount},
+		{Address: shieldedAddress2, Amount: payment2Amount},
 	}
 
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  TRANSACTION SUMMARY - MULTIPLE SHIELDED")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("\nInput:    %s ZEC\n", zatoshiToZec6(inputAmount))
-	fmt.Printf("Output 1: %s ZEC -> %s...\n", zatoshiToZec6(payment1Amount), shieldedAddress6_1[:20])
-	fmt.Printf("Output 2: %s ZEC -> %s...\n", zatoshiToZec6(payment2Amount), shieldedAddress6_2[:20])
-	fmt.Printf("Fee:      %s ZEC\n", zatoshiToZec6(fee))
-	fmt.Printf("Change:   %s ZEC\n", zatoshiToZec6(inputAmount-payment1Amount-payment2Amount-fee))
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
+	fmt.Printf("\nInput:    %s ZEC (%d UTXOs)\n", common.ZatoshiToZec(totalInput), len(inputs))
+	fmt.Printf("Output 1: %s ZEC -> %s...\n", common.ZatoshiToZec(payment1Amount), shieldedAddress1[:20])
+	fmt.Printf("Output 2: %s ZEC -> %s...\n", common.ZatoshiToZec(payment2Amount), shieldedAddress2[:20])
+	fmt.Printf("Fee:      %s ZEC\n", common.ZatoshiToZec(fee))
+	fmt.Printf("Change:   %s ZEC\n", common.ZatoshiToZec(totalInput-payment1Amount-payment2Amount-fee))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	fmt.Println("WHAT THIS DEMONSTRATES:")
@@ -142,9 +112,18 @@ func main() {
 
 	request, err := t2z.NewTransactionRequest(payments)
 	if err != nil {
-		log.Fatalf("Failed to create transaction request: %v", err)
+		common.PrintError("Failed to create transaction request", err)
+		os.Exit(1)
 	}
 	defer request.Free()
+
+	// Get current block height
+	info, err := client.GetBlockchainInfo()
+	if err != nil {
+		common.PrintError("Failed to get blockchain info", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Current block height: %d\n", info.Blocks)
 
 	request.SetTargetHeight(2_500_000)
 	fmt.Println("Using mainnet parameters (target height: 2,500,000)")
@@ -154,7 +133,8 @@ func main() {
 	fmt.Println("1. Proposing transaction...")
 	pczt, err := t2z.ProposeTransaction(inputs, request)
 	if err != nil {
-		log.Fatalf("Failed to propose transaction: %v", err)
+		common.PrintError("Failed to propose transaction", err)
+		os.Exit(1)
 	}
 	fmt.Println("   PCZT created with multiple Orchard outputs")
 	fmt.Println()
@@ -163,7 +143,8 @@ func main() {
 	fmt.Println("   This takes longer with multiple outputs...")
 	proved, err := t2z.ProveTransaction(pczt)
 	if err != nil {
-		log.Fatalf("Failed to prove transaction: %v", err)
+		common.PrintError("Failed to prove transaction", err)
+		os.Exit(1)
 	}
 	fmt.Println("   Orchard proofs generated!")
 	fmt.Println()
@@ -177,33 +158,44 @@ func main() {
 	}
 	fmt.Println()
 
-	fmt.Println("4. Getting sighash...")
-	sighash, err := t2z.GetSighash(proved, 0)
-	if err != nil {
-		log.Fatalf("Failed to get sighash: %v", err)
+	// Sign each input
+	fmt.Println("4. Signing each input...")
+	currentPczt := proved
+	for i := 0; i < len(inputs); i++ {
+		sighash, err := t2z.GetSighash(currentPczt, uint(i))
+		if err != nil {
+			common.PrintError(fmt.Sprintf("Failed to get sighash for input %d", i), err)
+			os.Exit(1)
+		}
+		signature := common.SignCompact(sighash[:], common.TEST_KEYPAIR)
+		currentPczt, err = t2z.AppendSignature(currentPczt, uint(i), signature)
+		if err != nil {
+			common.PrintError(fmt.Sprintf("Failed to append signature for input %d", i), err)
+			os.Exit(1)
+		}
+		fmt.Printf("   Input %d: signed\n", i)
 	}
-	fmt.Printf("   Sighash: %s...\n", hex.EncodeToString(sighash[:])[:32])
 	fmt.Println()
 
-	fmt.Println("5. Signing transaction (client-side)...")
-	signature := signMessage6(privateKey, sighash)
-	fmt.Printf("   Signature: %s...\n", hex.EncodeToString(signature[:])[:32])
-	fmt.Println()
-
-	fmt.Println("6. Appending signature...")
-	signed, err := t2z.AppendSignature(proved, 0, signature)
+	fmt.Println("5. Finalizing transaction...")
+	txBytes, err := t2z.FinalizeAndExtract(currentPczt)
 	if err != nil {
-		log.Fatalf("Failed to append signature: %v", err)
+		common.PrintError("Failed to finalize transaction", err)
+		os.Exit(1)
 	}
-	fmt.Println("   Signature appended")
-	fmt.Println()
-
-	fmt.Println("7. Finalizing transaction...")
-	txBytes, err := t2z.FinalizeAndExtract(signed)
-	if err != nil {
-		log.Fatalf("Failed to finalize: %v", err)
-	}
+	txHex := hex.EncodeToString(txBytes)
 	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
+
+	fmt.Println("======================================================================")
+	fmt.Println("  TRANSACTION CREATED (NOT BROADCAST)")
+	fmt.Println("======================================================================")
+	fmt.Printf("\nTransaction size: %d bytes\n", len(txBytes))
+	fmt.Printf("Transaction hex (first 100 chars): %s...\n", txHex[:100])
+	fmt.Println()
+	fmt.Println("NOTE: Shielded transactions cannot be broadcast to regtest")
+	fmt.Println("      (Zebra has no wallet to receive shielded funds)")
+	fmt.Println("      UTXOs are still available for other examples.")
+	fmt.Println()
 
 	fmt.Println("SUCCESS! Shielded to 2 Orchard recipients\n")
 }

@@ -5,113 +5,77 @@
 // - Sign each input separately
 // - Consolidate funds into fewer outputs
 //
-// Run with: go run ./examples/zebrad/example3_utxo_consolidation.go
+// Run with: go run ./3-utxo-consolidation
 
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
-	"strings"
+	"os"
+	"path/filepath"
 
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	t2z "github.com/gstohl/t2z/go"
-	"golang.org/x/crypto/ripemd160"
+	"github.com/gstohl/t2z/go/examples/zebrad-regtest/common"
 )
-
-func createTestKeypair3() ([]byte, []byte) {
-	privateKeyHex := "e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35"
-	privateKeyBytes, _ := hex.DecodeString(privateKeyHex)
-
-	privKey := secp256k1.PrivKeyFromBytes(privateKeyBytes)
-	pubKeyBytes := privKey.PubKey().SerializeCompressed()
-
-	return privateKeyBytes, pubKeyBytes
-}
-
-func hash160_3(data []byte) []byte {
-	sha256Hash := sha256.Sum256(data)
-	ripemd160Hasher := ripemd160.New()
-	ripemd160Hasher.Write(sha256Hash[:])
-	return ripemd160Hasher.Sum(nil)
-}
-
-func createP2PKHScript3(pubkey []byte) []byte {
-	pubkeyHash := hash160_3(pubkey)
-	script := make([]byte, 25)
-	script[0] = 0x76
-	script[1] = 0xa9
-	script[2] = 0x14
-	copy(script[3:23], pubkeyHash)
-	script[23] = 0x88
-	script[24] = 0xac
-	return script
-}
-
-func signMessage3(privateKey []byte, message [32]byte) [64]byte {
-	privKey := secp256k1.PrivKeyFromBytes(privateKey)
-	compact := ecdsa.SignCompact(privKey, message[:], true)
-
-	var sigBytes [64]byte
-	copy(sigBytes[:], compact[1:])
-	return sigBytes
-}
-
-func zatoshiToZec3(zatoshi uint64) string {
-	return fmt.Sprintf("%.8f", float64(zatoshi)/100_000_000)
-}
 
 func main() {
 	fmt.Println()
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  EXAMPLE 3: MULTIPLE INPUTS (UTXO Consolidation)")
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
-	privateKey, pubkey := createTestKeypair3()
-	destAddress := "tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma"
-	scriptPubKey := createP2PKHScript3(pubkey)
+	// Set data directory relative to this script
+	exe, _ := os.Executable()
+	dataDir := filepath.Join(filepath.Dir(exe), "..", "data")
+	common.SetDataDir(dataDir)
+
+	// Create Zebra client
+	client := common.NewZebraClient()
+
+	// Load test data
+	testData, err := common.LoadTestData()
+	if err != nil {
+		common.PrintError("Failed to load test data", err)
+		fmt.Println("Please run setup first: go run ./setup")
+		os.Exit(1)
+	}
+
+	destAddress := testData.Transparent.Address
 
 	fmt.Println("Configuration:")
 	fmt.Printf("  Address: %s\n\n", destAddress)
 
-	// Create 2 mock UTXOs (simulating multiple coinbase rewards)
-	var txid1, txid2 [32]byte
-	copy(txid1[:], []byte("example3_utxo1_consolidation_00"))
-	copy(txid2[:], []byte("example3_utxo2_consolidation_00"))
+	// Fetch fresh mature coinbase UTXOs
+	fmt.Println("Fetching mature coinbase UTXOs...")
+	utxos, err := common.GetMatureCoinbaseUtxos(client, common.TEST_KEYPAIR, 10)
+	if err != nil {
+		common.PrintError("Failed to get UTXOs", err)
+		os.Exit(1)
+	}
 
-	// Each UTXO is 1 ZEC
-	input1Amount := uint64(100_000_000) // 1 ZEC
-	input2Amount := uint64(100_000_000) // 1 ZEC
-	totalInput := input1Amount + input2Amount
+	// For consolidation, we want multiple inputs going to single output
+	minUtxos := 6
+	if len(utxos) < minUtxos {
+		common.PrintError("Insufficient UTXOs", fmt.Errorf("need at least %d mature UTXOs, got %d. Run more examples to create UTXOs", minUtxos, len(utxos)))
+		os.Exit(1)
+	}
 
-	inputs := []t2z.TransparentInput{
-		{
-			Pubkey:       pubkey,
-			TxID:         txid1,
-			Vout:         0,
-			Amount:       input1Amount,
-			ScriptPubKey: scriptPubKey,
-		},
-		{
-			Pubkey:       pubkey,
-			TxID:         txid2,
-			Vout:         0,
-			Amount:       input2Amount,
-			ScriptPubKey: scriptPubKey,
-		},
+	// Use 6 UTXOs for consolidation
+	inputs := utxos[:minUtxos]
+	var totalInput uint64
+	for _, u := range inputs {
+		totalInput += u.Amount
 	}
 
 	fmt.Printf("Found %d UTXOs:\n", len(inputs))
 	for i, inp := range inputs {
-		fmt.Printf("  [%d] %s ZEC\n", i, zatoshiToZec3(inp.Amount))
+		fmt.Printf("  [%d] %s ZEC\n", i, common.ZatoshiToZec(inp.Amount))
 	}
-	fmt.Printf("  Total: %s ZEC\n\n", zatoshiToZec3(totalInput))
+	fmt.Printf("  Total: %s ZEC\n\n", common.ZatoshiToZec(totalInput))
 
-	// Calculate fee: 2 inputs, 1 output, 0 orchard
+	// Calculate fee: N inputs, 1 output (consolidation), 0 orchard
 	fee := t2z.CalculateFee(len(inputs), 1, 0)
 	outputAmount := totalInput - fee
 
@@ -119,29 +83,39 @@ func main() {
 		{Address: destAddress, Amount: outputAmount},
 	}
 
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println("  TRANSACTION SUMMARY - UTXO CONSOLIDATION")
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("\nInputs:  %d UTXOs totaling %s ZEC\n", len(inputs), zatoshiToZec3(totalInput))
-	fmt.Printf("Output:  %s ZEC (consolidated)\n", zatoshiToZec3(outputAmount))
-	fmt.Printf("Fee:     %s ZEC\n", zatoshiToZec3(fee))
+	fmt.Println("======================================================================")
+	fmt.Printf("\nInputs:  %d UTXOs totaling %s ZEC\n", len(inputs), common.ZatoshiToZec(totalInput))
+	fmt.Printf("Output:  %s ZEC (consolidated)\n", common.ZatoshiToZec(outputAmount))
+	fmt.Printf("Fee:     %s ZEC\n", common.ZatoshiToZec(fee))
 	fmt.Printf("Result:  %d UTXOs -> 1 UTXO\n", len(inputs))
-	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("======================================================================")
 	fmt.Println()
 
 	request, err := t2z.NewTransactionRequest(payments)
 	if err != nil {
-		log.Fatalf("Failed to create transaction request: %v", err)
+		common.PrintError("Failed to create transaction request", err)
+		os.Exit(1)
 	}
 	defer request.Free()
 
+	// Get current block height
+	info, err := client.GetBlockchainInfo()
+	if err != nil {
+		common.PrintError("Failed to get blockchain info", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Current block height: %d\n", info.Blocks)
 	request.SetTargetHeight(2_500_000)
+	fmt.Println()
 
 	// Workflow
 	fmt.Println("1. Proposing transaction with multiple inputs...")
 	pczt, err := t2z.ProposeTransaction(inputs, request)
 	if err != nil {
-		log.Fatalf("Failed to propose transaction: %v", err)
+		common.PrintError("Failed to propose transaction", err)
+		os.Exit(1)
 	}
 	fmt.Printf("   PCZT created with %d inputs\n", len(inputs))
 	fmt.Println()
@@ -149,7 +123,8 @@ func main() {
 	fmt.Println("2. Proving transaction...")
 	proved, err := t2z.ProveTransaction(pczt)
 	if err != nil {
-		log.Fatalf("Failed to prove transaction: %v", err)
+		common.PrintError("Failed to prove transaction", err)
+		os.Exit(1)
 	}
 	fmt.Println("   Proofs generated")
 	fmt.Println()
@@ -171,16 +146,18 @@ func main() {
 
 		sighash, err := t2z.GetSighash(currentPczt, uint(i))
 		if err != nil {
-			log.Fatalf("Failed to get sighash for input %d: %v", i, err)
+			common.PrintError(fmt.Sprintf("Failed to get sighash for input %d", i), err)
+			os.Exit(1)
 		}
 		fmt.Printf("     Sighash: %s...\n", hex.EncodeToString(sighash[:])[:24])
 
-		signature := signMessage3(privateKey, sighash)
+		signature := common.SignCompact(sighash[:], common.TEST_KEYPAIR)
 		fmt.Printf("     Signature: %s...\n", hex.EncodeToString(signature[:])[:24])
 
 		currentPczt, err = t2z.AppendSignature(currentPczt, uint(i), signature)
 		if err != nil {
-			log.Fatalf("Failed to append signature for input %d: %v", i, err)
+			common.PrintError(fmt.Sprintf("Failed to append signature for input %d", i), err)
+			os.Exit(1)
 		}
 		fmt.Println("     Signature appended")
 	}
@@ -189,9 +166,37 @@ func main() {
 	fmt.Println("5. Finalizing transaction...")
 	txBytes, err := t2z.FinalizeAndExtract(currentPczt)
 	if err != nil {
-		log.Fatalf("Failed to finalize: %v", err)
+		common.PrintError("Failed to finalize transaction", err)
+		os.Exit(1)
 	}
+	txHex := hex.EncodeToString(txBytes)
 	fmt.Printf("   Transaction finalized (%d bytes)\n\n", len(txBytes))
 
-	fmt.Printf("SUCCESS! %d UTXOs consolidated into 1\n\n", len(inputs))
+	// Broadcast transaction
+	fmt.Println("6. Broadcasting transaction to network...")
+	txid, err := client.SendRawTransaction(txHex)
+	if err != nil {
+		common.PrintError("Failed to broadcast transaction", err)
+		os.Exit(1)
+	}
+	common.PrintBroadcastResult(txid, txHex)
+
+	// Mark UTXOs as spent
+	if err := common.MarkUtxosSpent(inputs); err != nil {
+		fmt.Printf("Warning: Failed to mark UTXOs as spent: %v\n", err)
+	}
+
+	// Wait for confirmation
+	fmt.Println("Waiting for confirmation...")
+	currentHeight := info.Blocks
+	_, err = client.WaitForBlocks(currentHeight+1, 60000)
+	if err != nil {
+		fmt.Printf("Warning: %v\n", err)
+	} else {
+		fmt.Println("   Confirmed!")
+	}
+	fmt.Println()
+
+	fmt.Printf("SUCCESS! %d UTXOs consolidated into 1\n", len(inputs))
+	fmt.Printf("TXID: %s\n\n", txid)
 }
