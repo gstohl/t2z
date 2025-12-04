@@ -17,11 +17,9 @@
 
 name: Release
 
-# DISABLED: Change to enable on tag push
-# on:
-#   push:
-#     tags: ['v*']
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       dry_run:
