@@ -39,6 +39,10 @@ bindings/go/examples/zebrad-mainnet/device-b
 bindings/go/examples/zebrad-mainnet/generate-wallet
 bindings/go/examples/zebrad-mainnet/send
 
+# Example runtime data (spent UTXOs tracking)
+bindings/*/examples/*/data/*.json
+!bindings/*/examples/*/data/.gitkeep
+
 # Native library directories (populated by scripts/build-dev.js)
 bindings/typescript/lib/
 bindings/go/lib/
