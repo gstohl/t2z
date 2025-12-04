@@ -131,6 +131,7 @@ public class Example5ShieldedOutput {
 
                 System.out.println("SUCCESS! TXID: " + txid);
                 System.out.println("   Shielded " + zatoshiToZec(paymentAmount) + " ZEC to Orchard\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 5 FAILED", e);

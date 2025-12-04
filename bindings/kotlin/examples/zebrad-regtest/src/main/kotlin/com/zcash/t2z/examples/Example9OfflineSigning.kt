@@ -48,7 +48,7 @@ fun main() = runBlocking {
 
         // Send back to ourselves
         val destAddress = keypair.address
-        val fee = T2z.calculateFee(1, 2, 0)
+        val fee = calculateFee(1, 2, 0)
         val paymentAmount = totalInput / 2UL
 
         val payments = listOf(Payment(destAddress, paymentAmount))
@@ -67,7 +67,7 @@ fun main() = runBlocking {
             "TRANSACTION SUMMARY",
             listOf(input),
             payments.map { it.address to it.amount },
-            fee
+            fee.toULong()
         )
 
         // ============================================================
@@ -79,19 +79,19 @@ fun main() = runBlocking {
         println()
 
         println("1. Proposing transaction...")
-        val pczt = T2z.proposeTransaction(listOf(input), request)
+        val pczt = proposeTransaction(listOf(input), request)
         println("   PCZT created")
 
         println("\n2. Proving transaction...")
-        val proved = T2z.proveTransaction(pczt)
+        val proved = proveTransaction(pczt)
         println("   Proofs generated")
 
         println("\n3. Serializing PCZT for storage...")
-        val pcztBytes = T2z.serializePczt(proved)
+        val pcztBytes = serializePczt(proved)
         println("   PCZT serialized: ${pcztBytes.size} bytes")
 
         println("\n4. Getting sighash for offline signing...")
-        val sighash = T2z.getSighash(proved, 0)
+        val sighash = getSighash(proved, 0)
         val sighashHex = bytesToHex(sighash)
         println("   Sighash: $sighashHex")
 
@@ -126,18 +126,18 @@ fun main() = runBlocking {
         println()
 
         println("1. Parsing stored PCZT...")
-        val loadedPczt = T2z.parsePczt(pcztBytes)
+        val loadedPczt = parsePczt(pcztBytes)
         println("   PCZT restored from bytes")
 
         println("\n2. Receiving signature from offline device...")
         println("   Signature: ${signatureHex.take(32)}...")
 
         println("\n3. Appending signature to PCZT...")
-        val signed = T2z.appendSignature(loadedPczt, 0, signature)
+        val signed = appendSignature(loadedPczt, 0, signature)
         println("   Signature appended")
 
         println("\n4. Finalizing transaction...")
-        val txBytes = T2z.finalizeAndExtract(signed)
+        val txBytes = finalizeAndExtract(signed)
         val txHex = bytesToHex(txBytes)
         println("   Transaction finalized (${txBytes.size} bytes)")
 

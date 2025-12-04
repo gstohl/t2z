@@ -133,6 +133,7 @@ public class Example2MultipleOutputs {
                 System.out.println("   Confirmed!\n");
 
                 System.out.println("SUCCESS! TXID: " + txid + "\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 2 FAILED", e);

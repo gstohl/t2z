@@ -111,6 +111,7 @@ public class Example3MultipleInputs {
 
                 System.out.println("SUCCESS! TXID: " + txid);
                 System.out.println("   " + inputs.size() + " UTXOs consolidated into 1\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 3 FAILED", e);

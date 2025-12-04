@@ -163,6 +163,7 @@ public class Example9OfflineSigning {
                 System.out.println("  - PCZT can be serialized/parsed for transport");
                 System.out.println("  - Sighash is safe to transfer (reveals no private data)");
                 System.out.println();
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 9 FAILED", e);

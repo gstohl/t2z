@@ -1,18 +1,21 @@
-# t2z Java Bindings
+# t2z-java
 
-Java bindings using [JNA](https://github.com/java-native-access/jna) to wrap the Rust core library.
+Java bindings for t2z - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
 ## Installation
 
-```bash
-# Build Rust library first
-cd ../../core/rust && cargo build --release
+```groovy
+// build.gradle
+repositories {
+    mavenCentral()
+}
 
-# Build and test Java
-cd ../../bindings/java
-./gradlew build
-./gradlew test
+dependencies {
+    implementation 'io.github.gstohl:t2z-java:0.1.6'
+}
 ```
+
+Native libraries are bundled for: macOS (arm64/x64), Linux (x64/arm64), Windows (x64/arm64).
 
 ## Usage
 
@@ -22,7 +25,7 @@ import java.util.List;
 
 // 1. Create payment request
 try (TransactionRequest request = new TransactionRequest(List.of(
-    new Payment("utest1...", 100_000L)  // unified or transparent address
+    new Payment("u1...", 100_000L)  // unified or transparent address
 ))) {
 
     // 2. Create PCZT from transparent UTXOs
@@ -46,13 +49,13 @@ try (TransactionRequest request = new TransactionRequest(List.of(
 
     // 5. Finalize and broadcast
     byte[] txBytes = T2z.finalizeAndExtract(signed);
-    // submit txBytes to zcashd/lightwalletd
+    // submit txBytes to Zcash network
 }
 ```
 
 ## API
 
-See [root README](../README.md) for full API documentation.
+See the [main repo](https://github.com/gstohl/t2z) for full documentation.
 
 | Method | Description |
 |--------|-------------|
@@ -66,20 +69,18 @@ See [root README](../README.md) for full API documentation.
 | `T2z.finalizeAndExtract(pczt)` | Extract transaction bytes |
 | `T2z.parsePczt(bytes)` / `T2z.serializePczt(pczt)` | PCZT serialization |
 | `Signing.signMessage(privKey, hash)` | secp256k1 signing utility |
+| `Signing.getPublicKey(privKey)` | Derive compressed public key |
+| `T2z.calculateFee(inputs, outputs)` | Calculate ZIP-317 fee |
 
 ## Types
 
 ```java
-// Payment request
 public class Payment {
-    String address;    // transparent (tm...) or unified (utest1...)
+    String address;    // transparent (t1...) or unified (u1...)
     long amount;       // zatoshis
     String memo;       // optional, for shielded outputs
-    String label;      // optional
-    String message;    // optional
 }
 
-// Transparent input
 public class TransparentInput {
     byte[] pubkey;       // 33 bytes compressed secp256k1
     byte[] txid;         // 32 bytes
@@ -87,15 +88,16 @@ public class TransparentInput {
     long amount;         // zatoshis
     byte[] scriptPubKey; // P2PKH script
 }
-
-// Transparent output (for verification)
-public class TransparentOutput {
-    byte[] scriptPubKey;
-    long value;          // zatoshis
-}
 ```
 
-## Memory Management
+## Examples
+
+See [examples/](examples/) for complete working examples:
+
+- **zebrad-regtest/** - Local regtest network examples (1-9)
+- **zebrad-mainnet/** - Mainnet examples with hardware wallet flow
+
+## Memory
 
 **Automatic cleanup**: All handles implement `Closeable` and are automatically freed via `Cleaner`. Use try-with-resources for scoped cleanup:
 
@@ -103,61 +105,6 @@ public class TransparentOutput {
 try (TransactionRequest request = new TransactionRequest(payments)) {
     // request is automatically closed when block exits
 }
-```
-
-**Consuming methods** transfer ownership (input PCZT becomes invalid):
-- `proveTransaction`, `appendSignature`, `finalizeAndExtract`, `combine`
-
-**Non-consuming** (read-only):
-- `getSighash`, `serialize`, `verifyBeforeSigning`
-
-## Builder Pattern
-
-Use builders for complex objects:
-
-```java
-Payment payment = Payment.builder()
-    .address("tm9iMLAuYMzJ6jtFLcA7rzUmfreGuKvr7Ma")
-    .amount(100_000L)
-    .memo("Test payment")
-    .build();
-
-TransparentInput input = TransparentInput.builder()
-    .pubkey(pubkeyBytes)
-    .txid(txidBytes)
-    .vout(0)
-    .amount(100_000_000L)
-    .scriptPubKey(scriptBytes)
-    .build();
-```
-
-## Dependencies
-
-- **JNA 5.14+** - Java Native Access for FFI
-- **Bouncy Castle** - secp256k1 signing (bcprov-jdk18on)
-
-## Gradle
-
-```groovy
-dependencies {
-    implementation 'com.zcash:t2z:0.1.0'
-}
-```
-
-## Requirements
-
-- JDK 17+
-- Native `libt2z` library in library path
-
-Set library path:
-```java
-System.setProperty("jna.library.path", "/path/to/core/rust/target/release");
-```
-
-Or via environment:
-```bash
-export JNA_LIBRARY_PATH=/path/to/core/rust/target/release
-./gradlew test
 ```
 
 ## License

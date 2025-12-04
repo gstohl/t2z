@@ -49,7 +49,7 @@ fun main() = runBlocking {
 
         // Send back to ourselves
         val destAddress = keypair.address
-        val fee = T2z.calculateFee(inputs.size, 2, 0)
+        val fee = calculateFee(inputs.size, 2, 0)
         val paymentAmount = totalInput / 2UL
 
         val payments = listOf(Payment(destAddress, paymentAmount))
@@ -68,20 +68,20 @@ fun main() = runBlocking {
             "TRANSACTION SUMMARY",
             inputs,
             payments.map { it.address to it.amount },
-            fee
+            fee.toULong()
         )
 
         println("--- PARALLEL SIGNING WORKFLOW ---\n")
 
         // Step 1: Create and prove the PCZT
         println("1. Creating and proving PCZT...")
-        val pczt = T2z.proposeTransaction(inputs, request)
-        val proved = T2z.proveTransaction(pczt)
+        val pczt = proposeTransaction(inputs, request)
+        val proved = proveTransaction(pczt)
         println("   PCZT created and proved\n")
 
         // Step 2: Serialize the proved PCZT
         println("2. Serializing PCZT for distribution to signers...")
-        val pcztBytes = T2z.serializePczt(proved)
+        val pcztBytes = serializePczt(proved)
         println("   Serialized PCZT: ${pcztBytes.size} bytes\n")
 
         // Step 3: Simulate parallel signing by different parties
@@ -89,43 +89,43 @@ fun main() = runBlocking {
 
         // Signer A signs input 0
         println("   Signer A: Signing input 0...")
-        val pcztA = T2z.parsePczt(pcztBytes)
-        val sighashA = T2z.getSighash(pcztA, 0)
+        val pcztA = parsePczt(pcztBytes)
+        val sighashA = getSighash(pcztA, 0)
         val signatureA = signCompact(sighashA, keypair)
-        val signedA = T2z.appendSignature(pcztA, 0, signatureA)
-        val bytesA = T2z.serializePczt(signedA)
+        val signedA = appendSignature(pcztA, 0, signatureA)
+        val bytesA = serializePczt(signedA)
         println("   Signer A: Done (signed input 0)\n")
 
         // Signer B signs input 1
         println("   Signer B: Signing input 1...")
-        val pcztB = T2z.parsePczt(pcztBytes)
-        val sighashB = T2z.getSighash(pcztB, 1)
+        val pcztB = parsePczt(pcztBytes)
+        val sighashB = getSighash(pcztB, 1)
         val signatureB = signCompact(sighashB, keypair)
-        val signedB = T2z.appendSignature(pcztB, 1, signatureB)
-        val bytesB = T2z.serializePczt(signedB)
+        val signedB = appendSignature(pcztB, 1, signatureB)
+        val bytesB = serializePczt(signedB)
         println("   Signer B: Done (signed input 1)\n")
 
         // Signer C signs input 2
         println("   Signer C: Signing input 2...")
-        val pcztC = T2z.parsePczt(pcztBytes)
-        val sighashC = T2z.getSighash(pcztC, 2)
+        val pcztC = parsePczt(pcztBytes)
+        val sighashC = getSighash(pcztC, 2)
         val signatureC = signCompact(sighashC, keypair)
-        val signedC = T2z.appendSignature(pcztC, 2, signatureC)
-        val bytesC = T2z.serializePczt(signedC)
+        val signedC = appendSignature(pcztC, 2, signatureC)
+        val bytesC = serializePczt(signedC)
         println("   Signer C: Done (signed input 2)\n")
 
         // Step 4: Combine all partially-signed PCZTs
         println("4. Combining partially-signed PCZTs...")
-        val combinedA = T2z.parsePczt(bytesA)
-        val combinedB = T2z.parsePczt(bytesB)
-        val combinedC = T2z.parsePczt(bytesC)
+        val combinedA = parsePczt(bytesA)
+        val combinedB = parsePczt(bytesB)
+        val combinedC = parsePczt(bytesC)
 
-        val fullySignedPczt = T2z.combine(listOf(combinedA, combinedB, combinedC))
+        val fullySignedPczt = combine(listOf(combinedA, combinedB, combinedC))
         println("   All signatures combined into single PCZT\n")
 
         // Step 5: Finalize
         println("5. Finalizing transaction...")
-        val txBytes = T2z.finalizeAndExtract(fullySignedPczt)
+        val txBytes = finalizeAndExtract(fullySignedPczt)
         val txHex = bytesToHex(txBytes)
         println("   Transaction finalized (${txBytes.size} bytes)\n")
 

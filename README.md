@@ -2,122 +2,58 @@
 
 Multi-language library for sending transparent Zcash to shielded Orchard outputs using PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
-## Requirements
+## Installation
 
-| Tool | Version | Required For |
-|------|---------|--------------|
-| **Node.js** | 18+ | Build scripts, TypeScript bindings |
-| **Rust** | 1.75+ | Core library compilation |
-| **Go** | 1.21+ | Go bindings |
-| **Java JDK** | 17+ | Java/Kotlin bindings |
-| **Gradle** | 8.0+ | Java/Kotlin build (wrapper included) |
-
-Optional:
-- **Docker** - For running regtest examples with Zebra
-
-## Structure
-
-```
-t2z/
-├── core/
-│   └── rust/        # Core library with C FFI
-├── bindings/
-│   ├── go/          # Go bindings (CGO)
-│   ├── typescript/  # TypeScript bindings (koffi)
-│   ├── java/        # Java bindings (JNA)
-│   └── kotlin/      # Kotlin bindings (JNA)
-└── infra/           # Docker infrastructure for regtest
-```
-
-## Scripts
-
-All development scripts are cross-platform Node.js scripts in `scripts/`:
+### TypeScript/Node.js
 
 ```bash
-# Build native library and copy to all bindings
-node scripts/build-dev.js
-
-# Run all tests (Rust + all bindings)
-node scripts/test-all.js
-
-# Run only Rust tests
-node scripts/test-all.js --rust-only
-
-# Run only binding tests (skip Rust)
-node scripts/test-all.js --bindings-only
-
-# Clean all build artifacts
-node scripts/clean.js
+npm install @gstohl/t2z
 ```
 
-### Full Integration Test (Docker)
-
-Run all tests in an isolated Linux environment:
+### Go
 
 ```bash
-cd infra/linux-build
-docker-compose up --build
+go get github.com/gstohl/t2z-go
 ```
 
-This builds a fresh Ubuntu 22.04 container with all dependencies (Node.js, Rust, Go, Java), then:
-1. Cleans all build artifacts
-2. Builds the Rust library from source
-3. Runs all tests: Rust (46), Go (14), TypeScript (17), Kotlin (19), Java (17)
+### Kotlin
 
-### What `build-dev.js` Does
-
-1. Builds the Rust library in release mode
-2. Detects your platform (macOS/Linux/Windows, x64/arm64)
-3. Copies the native library to all binding directories
-
-### Manual Build
-
-```bash
-cd core/rust && cargo build --release
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("io.github.gstohl:t2z-kotlin:0.1.6")
+}
 ```
 
-Outputs in `core/rust/target/release/`:
-- `libt2z.dylib` (macOS) / `libt2z.so` (Linux) / `t2z.dll` (Windows)
-- `libt2z.a` (static)
+### Java
 
-Header: `core/rust/include/t2z.h`
+```groovy
+// build.gradle
+dependencies {
+    implementation 'io.github.gstohl:t2z-java:0.1.6'
+}
+```
 
-### Library Locations
+Native libraries are bundled for: macOS (arm64/x64), Linux (x64/arm64), Windows (x64/arm64).
 
-After running `build-dev.js`, libraries are placed at:
-
-| Language | Location |
-|----------|----------|
-| TypeScript | `bindings/typescript/lib/<platform>/` |
-| Go | `bindings/go/lib/<platform>/` |
-| Kotlin | `bindings/kotlin/src/main/resources/<jna-platform>/` |
-| Java | `bindings/java/src/main/resources/<jna-platform>/` |
-
-Platform mappings:
-- `darwin-arm64` / `darwin-aarch64` (macOS Apple Silicon)
-- `darwin-x64` / `darwin-x86-64` (macOS Intel)
-- `linux-x64` / `linux-x86-64` (Linux x64)
-- `linux-arm64` / `linux-aarch64` (Linux ARM)
-- `windows-x64` / `win32-x86-64` (Windows x64)
-
-## Quick Example (TypeScript)
+## Quick Example
 
 ```typescript
 import { TransactionRequest, proposeTransaction, proveTransaction,
-         getSighash, appendSignature, finalizeAndExtract, signMessage } from 't2z';
+         getSighash, appendSignature, finalizeAndExtract, signMessage } from '@gstohl/t2z';
 
 // Create payment to shielded address
 const request = new TransactionRequest([{
-  address: 'utest1...', // unified address
-  amount: '100000',     // 0.001 ZEC
+  address: 'u1...',       // unified address
+  amount: '100000',       // 0.001 ZEC in zatoshis
 }]);
 
 // Build transaction from transparent UTXOs
 const pczt = proposeTransaction([{
-  pubkey: pubkeyBuffer,       // 33 bytes
+  pubkey: pubkeyBuffer,       // 33 bytes compressed
   txid: txidBuffer,           // 32 bytes
   vout: 0,
-  amount: '100000000',        // 1 ZEC
+  amount: '100000000',        // 1 ZEC in zatoshis
   scriptPubKey: scriptBuffer,
 }], request);
 
@@ -143,6 +79,7 @@ const txBytes = finalizeAndExtract(signed);
 | `combine` | Merge multiple PCZTs (parallel signing) |
 | `finalize_and_extract` | Extract final transaction bytes |
 | `parse_pczt` / `serialize_pczt` | PCZT serialization for storage/transport |
+| `calculate_fee` | Calculate ZIP-317 fee for given inputs/outputs |
 
 ## Use Cases
 
@@ -152,54 +89,88 @@ const txBytes = finalizeAndExtract(signed);
 
 ## Fees (ZIP-317)
 
+Use `calculate_fee(numInputs, numOutputs)` to get the exact fee before building transactions.
+
 - Transparent only: 10,000 zatoshis
-- Transparent → Shielded: 15,000 zatoshis
+- Transparent to Shielded: 15,000 zatoshis
 
-## Release Workflow (Proposal)
+## Package Registries
 
-A GitHub Actions workflow is provided in `.github/workflows/release.yml` for automated releases.
+| Language | Package | Registry |
+|----------|---------|----------|
+| TypeScript | `@gstohl/t2z` | [npm](https://www.npmjs.com/package/@gstohl/t2z) |
+| Go | `github.com/gstohl/t2z-go` | [GitHub](https://github.com/gstohl/t2z-go) |
+| Kotlin | `io.github.gstohl:t2z-kotlin` | [Maven Central](https://central.sonatype.com/artifact/io.github.gstohl/t2z-kotlin) |
+| Java | `io.github.gstohl:t2z-java` | [Maven Central](https://central.sonatype.com/artifact/io.github.gstohl/t2z-java) |
 
-### What It Does
+## Development
+
+### Requirements
+
+| Tool | Version | Required For |
+|------|---------|--------------|
+| **Node.js** | 18+ | Build scripts, TypeScript bindings |
+| **Rust** | 1.75+ | Core library compilation |
+| **Go** | 1.21+ | Go bindings |
+| **Java JDK** | 17+ | Java/Kotlin bindings |
+
+### Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Trigger: git tag v1.0.0                                    │
-├─────────────────────────────────────────────────────────────┤
-│  1. Build native libraries (parallel)                       │
-│     ├── macos-14    → libt2z-darwin-arm64.dylib             │
-│     ├── macos-13    → libt2z-darwin-x64.dylib               │
-│     ├── ubuntu      → libt2z-linux-x64.so                   │
-│     ├── ubuntu-arm  → libt2z-linux-arm64.so                 │
-│     └── windows     → t2z-windows-x64.dll                   │
-│                                                             │
-│  2. Create GitHub Release with all binaries                 │
-│                                                             │
-│  3. Publish packages                                        │
-│     ├── npm         → @gstohl/t2z                           │
-│     └── Go repo     → github.com/gstohl/t2z-go              │
-└─────────────────────────────────────────────────────────────┘
+t2z/
+├── core/
+│   └── rust/        # Core library with C FFI
+├── bindings/
+│   ├── go/          # Go bindings (CGO)
+│   ├── typescript/  # TypeScript bindings (koffi)
+│   ├── java/        # Java bindings (JNA)
+│   └── kotlin/      # Kotlin bindings (JNA)
+└── infra/           # Docker infrastructure for testing
 ```
 
-Java/Kotlin users can use [JitPack](https://jitpack.io) to install directly from GitHub.
+### Scripts
 
-### Prerequisites
+```bash
+# Build native library and copy to all bindings
+node scripts/build-dev.js
 
-1. **Create Go repo**: `gstohl/t2z-go` (empty, will be auto-populated)
+# Run all tests (Rust + all bindings)
+node scripts/test-all.js
 
-2. **Configure secrets** (Settings → Secrets → Actions):
-   - `NPM_TOKEN` - npm publish token
-   - `MULTI_REPO_TOKEN` - GitHub PAT with `repo` scope (for Go repo push)
+# Clean all build artifacts
+node scripts/clean.js
 
-3. **Enable the workflow**: Edit `.github/workflows/release.yml` and change the trigger from `workflow_dispatch` to:
-   ```yaml
-   on:
-     push:
-       tags: ['v*']
-   ```
+# Run regtest examples (requires Docker)
+node scripts/run-regtest-examples.js           # All languages
+node scripts/run-regtest-examples.js --ts      # TypeScript only
+node scripts/run-regtest-examples.js --go      # Go only
+node scripts/run-regtest-examples.js --kotlin  # Kotlin only
+node scripts/run-regtest-examples.js --java    # Java only
+```
 
-### Manual Trigger
+### Regtest Examples
 
-The workflow can also be triggered manually via GitHub Actions UI for testing (dry run mode).
+The `run-regtest-examples.js` script runs end-to-end transaction examples against a local Zebra regtest node:
+
+1. Starts zebrad regtest container (or reuses existing)
+2. Waits for coinbase maturity (120+ blocks)
+3. Runs setup + all 9 examples for each language
+4. Leaves container running for faster subsequent runs
+
+Examples included:
+- **1-5**: Basic transparent and shielded transactions
+- **6-7**: Multiple outputs and mixed transactions
+- **8**: Combine workflow (parallel multi-party signing)
+- **9**: Offline signing (hardware wallet simulation)
+
+### Manual Build
+
+```bash
+cd core/rust && cargo build --release
+```
+
+Outputs in `core/rust/target/release/`:
+- `libt2z.dylib` (macOS) / `libt2z.so` (Linux) / `t2z.dll` (Windows)
 
 ## License
 

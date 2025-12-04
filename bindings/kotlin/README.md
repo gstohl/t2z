@@ -1,18 +1,21 @@
-# t2z Kotlin Bindings
+# t2z-kotlin
 
-Kotlin/JVM bindings using [JNA](https://github.com/java-native-access/jna) to wrap the Rust core library.
+Kotlin/JVM bindings for t2z - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
 ## Installation
 
-```bash
-# Build Rust library first
-cd ../../core/rust && cargo build --release
+```kotlin
+// build.gradle.kts
+repositories {
+    mavenCentral()
+}
 
-# Build and test Kotlin
-cd ../../bindings/kotlin
-./gradlew build
-./gradlew test
+dependencies {
+    implementation("io.github.gstohl:t2z-kotlin:0.1.6")
+}
 ```
+
+Native libraries are bundled for: macOS (arm64/x64), Linux (x64/arm64), Windows (x64/arm64).
 
 ## Usage
 
@@ -22,7 +25,7 @@ import com.zcash.t2z.*
 // 1. Create payment request
 TransactionRequest(listOf(
     Payment(
-        address = "utest1...",  // unified or transparent address
+        address = "u1...",      // unified or transparent address
         amount = 100_000UL      // 0.001 ZEC in zatoshis
     )
 )).use { request ->
@@ -48,11 +51,13 @@ TransactionRequest(listOf(
 
     // 5. Finalize and broadcast
     val txBytes = finalizeAndExtract(signed)
-    // submit txBytes to zcashd/lightwalletd
+    // submit txBytes to Zcash network
 }
 ```
 
 ## API
+
+See the [main repo](https://github.com/gstohl/t2z) for full documentation.
 
 | Function | Description |
 |----------|-------------|
@@ -66,16 +71,16 @@ TransactionRequest(listOf(
 | `finalizeAndExtract(pczt)` | Extract transaction bytes |
 | `parsePczt(bytes)` / `serializePczt(pczt)` | PCZT serialization |
 | `signMessage(privKey, hash)` | secp256k1 signing utility |
+| `getPublicKey(privKey)` | Derive compressed public key |
+| `calculateFee(inputs, outputs)` | Calculate ZIP-317 fee |
 
 ## Types
 
 ```kotlin
 data class Payment(
-    val address: String,    // transparent (tm...) or unified (utest1...)
-    val amount: ULong,      // zatoshis
-    val memo: String? = null,
-    val label: String? = null,
-    val message: String? = null
+    val address: String,        // transparent (t1...) or unified (u1...)
+    val amount: ULong,          // zatoshis
+    val memo: String? = null    // optional, for shielded outputs
 )
 
 data class TransparentInput(
@@ -85,14 +90,16 @@ data class TransparentInput(
     val amount: ULong,          // zatoshis
     val scriptPubKey: ByteArray // P2PKH script
 )
-
-data class TransparentOutput(
-    val scriptPubKey: ByteArray,
-    val value: ULong            // zatoshis
-)
 ```
 
-## Memory Management
+## Examples
+
+See [examples/](examples/) for complete working examples:
+
+- **zebrad-regtest/** - Local regtest network examples (1-9)
+- **zebrad-mainnet/** - Mainnet examples with hardware wallet flow
+
+## Memory
 
 **Automatic cleanup**: All handles implement `Closeable` and are automatically freed via `Cleaner`. Use Kotlin's `use` extension for scoped cleanup:
 
@@ -100,41 +107,6 @@ data class TransparentOutput(
 TransactionRequest(payments).use { request ->
     // request is automatically closed when block exits
 }
-```
-
-**Consuming functions** transfer ownership (input PCZT becomes invalid):
-- `proveTransaction`, `appendSignature`, `finalizeAndExtract`, `combine`
-
-**Non-consuming** (read-only):
-- `getSighash`, `serialize`, `verifyBeforeSigning`
-
-## Dependencies
-
-- **JNA 5.14+** - Java Native Access for FFI
-- **secp256k1-kmp** - Kotlin Multiplatform secp256k1 bindings (ACINQ)
-
-## Gradle
-
-```kotlin
-dependencies {
-    implementation("com.zcash:t2z:0.1.0")
-}
-```
-
-## Requirements
-
-- JDK 17+
-- Native `libt2z` library in library path
-
-Set library path:
-```kotlin
-System.setProperty("jna.library.path", "/path/to/core/rust/target/release")
-```
-
-Or via environment:
-```bash
-export JNA_LIBRARY_PATH=/path/to/core/rust/target/release
-./gradlew test
 ```
 
 ## License

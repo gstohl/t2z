@@ -137,6 +137,7 @@ public class Example6MultipleShielded {
 
                 System.out.println("SUCCESS! TXID: " + txid);
                 System.out.println("   Shielded to 2 Orchard recipients\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 6 FAILED", e);

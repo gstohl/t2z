@@ -61,7 +61,10 @@ export class ZebraClient {
 
     const response = await fetch(this.url, {
       method: 'POST',
-      headers,
+      headers: {
+        ...headers,
+        'Connection': 'close',  // Prevent keep-alive connections
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method,

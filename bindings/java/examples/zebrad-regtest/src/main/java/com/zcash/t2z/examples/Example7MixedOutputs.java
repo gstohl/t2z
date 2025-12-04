@@ -143,6 +143,7 @@ public class Example7MixedOutputs {
 
                 System.out.println("SUCCESS! TXID: " + txid);
                 System.out.println("   Mixed: " + zatoshiToZec(transparentPayment) + " ZEC transparent + " + zatoshiToZec(shieldedPayment) + " ZEC shielded\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 7 FAILED", e);

@@ -29,7 +29,7 @@ public class Setup {
         try {
             // Wait for Zebra to be ready
             System.out.println("Waiting for Zebra...");
-            client.waitForReady();
+            client.waitForReady(30, 1000);
             System.out.println("Zebra is ready\n");
 
             // Get blockchain info
@@ -91,10 +91,11 @@ public class Setup {
             System.out.println("  ./gradlew example7  # Mixed transparent + shielded (T→T+Z)");
             System.out.println("  ./gradlew example8  # Combine workflow (parallel signing)");
             System.out.println("  ./gradlew example9  # Offline signing (hardware wallet)\n");
-
+            System.exit(0);
         } catch (Exception e) {
             System.out.println("Setup failed: " + e.getMessage());
             e.printStackTrace();
+            System.exit(1);
         } finally {
             client.close();
         }

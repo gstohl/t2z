@@ -136,6 +136,7 @@ public class Example1SingleOutput {
                 System.out.println("   Confirmed!\n");
 
                 System.out.println("SUCCESS! TXID: " + txid + "\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 1 FAILED", e);

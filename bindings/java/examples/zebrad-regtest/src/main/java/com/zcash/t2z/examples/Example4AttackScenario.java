@@ -181,7 +181,7 @@ public class Example4AttackScenario {
             }
 
             System.out.println("KEY TAKEAWAY: Always call verifyBeforeSigning() before signing!\n");
-
+            System.exit(0);
         } catch (Exception e) {
             printError("EXAMPLE 4 FAILED", e);
             System.exit(1);

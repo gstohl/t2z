@@ -149,6 +149,7 @@ public class Example8CombineWorkflow {
 
                 System.out.println("SUCCESS! TXID: " + txid);
                 System.out.println("\nThe combine() function merged signatures from 3 independent signers.\n");
+                System.exit(0);
             }
         } catch (Exception e) {
             printError("EXAMPLE 8 FAILED", e);
