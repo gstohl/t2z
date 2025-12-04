@@ -33,6 +33,12 @@ yarn-error.log*
 *.so
 *.dll
 
+# Go binaries (no extension)
+bindings/go/examples/zebrad-mainnet/device-a
+bindings/go/examples/zebrad-mainnet/device-b
+bindings/go/examples/zebrad-mainnet/generate-wallet
+bindings/go/examples/zebrad-mainnet/send
+
 # Native library directories (populated by scripts/build-dev.js)
 bindings/typescript/lib/
 bindings/go/lib/

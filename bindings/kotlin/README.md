@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.gstohl:t2z-kotlin:0.2.0")
+    implementation("io.github.gstohl:t2z-kotlin:0.2.1")
 }
 ```
 

@@ -21,7 +21,7 @@ go get github.com/gstohl/t2z-go
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.gstohl:t2z-kotlin:0.2.0")
+    implementation("io.github.gstohl:t2z-kotlin:0.2.1")
 }
 ```
 
@@ -30,7 +30,7 @@ dependencies {
 ```groovy
 // build.gradle
 dependencies {
-    implementation 'io.github.gstohl:t2z-java:0.2.0'
+    implementation 'io.github.gstohl:t2z-java:0.2.1'
 }
 ```
 
@@ -181,8 +181,8 @@ Outputs in `core/rust/target/release/`:
 Releases are automated via GitHub Actions. To create a new release:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
 The release workflow will:

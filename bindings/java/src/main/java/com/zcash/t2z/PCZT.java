@@ -4,6 +4,7 @@ import com.sun.jna.Pointer;
 
 import java.io.Closeable;
 import java.lang.ref.Cleaner;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Partially Constructed Zcash Transaction (PCZT).
@@ -12,7 +13,8 @@ public final class PCZT implements Closeable {
     private static final Cleaner cleaner = Cleaner.create();
     private static final T2zLib lib = T2zLib.INSTANCE;
 
-    private Pointer handle;
+    // Shared holder so CleanerAction can be cancelled by setting to null
+    private final AtomicReference<Pointer> handleHolder;
     private boolean closed = false;
     private Cleaner.Cleanable cleanable;
 
@@ -20,8 +22,8 @@ public final class PCZT implements Closeable {
      * Create a PCZT from a native handle (internal use only).
      */
     PCZT(Pointer handle) {
-        this.handle = handle;
-        this.cleanable = cleaner.register(this, new CleanerAction(handle));
+        this.handleHolder = new AtomicReference<>(handle);
+        this.cleanable = cleaner.register(this, new CleanerAction(handleHolder));
     }
 
     @Override
@@ -30,7 +32,6 @@ public final class PCZT implements Closeable {
             if (cleanable != null) {
                 cleanable.clean();
             }
-            handle = null;
             closed = true;
         }
     }
@@ -40,7 +41,7 @@ public final class PCZT implements Closeable {
      */
     Pointer getHandle() {
         checkNotClosed();
-        return handle;
+        return handleHolder.get();
     }
 
     /**
@@ -48,10 +49,14 @@ public final class PCZT implements Closeable {
      */
     Pointer takeHandle() {
         checkNotClosed();
-        cleanable = null; // Don't free - ownership transferred
-        Pointer h = handle;
-        handle = null;
+        // Atomically take the handle and clear the holder so CleanerAction won't free it
+        Pointer h = handleHolder.getAndSet(null);
         closed = true;
+        // Clean up the cleanable (it will do nothing since handleHolder is now null)
+        if (cleanable != null) {
+            cleanable.clean();
+            cleanable = null;
+        }
         return h;
     }
 
@@ -62,17 +67,17 @@ public final class PCZT implements Closeable {
     }
 
     private static class CleanerAction implements Runnable {
-        private Pointer handle;
+        private final AtomicReference<Pointer> handleHolder;
 
-        CleanerAction(Pointer handle) {
-            this.handle = handle;
+        CleanerAction(AtomicReference<Pointer> handleHolder) {
+            this.handleHolder = handleHolder;
         }
 
         @Override
         public void run() {
+            Pointer handle = handleHolder.getAndSet(null);
             if (handle != null) {
                 lib.pczt_free(handle);
-                handle = null;
             }
         }
     }
