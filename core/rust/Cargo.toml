@@ -2,28 +2,44 @@
 name = "t2z"
 version = "0.1.0"
 edition = "2021"
+description = "Transparent to Shielded Zcash transactions using PCZT"
+license = "MIT"
+repository = "https://github.com/gstohl/t2z"
 
 [lib]
 name = "t2z"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-# Core PCZT library - using official zcash librustzcash with append_transparent_signature support
-pczt = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent", "orchard", "signer", "io-finalizer", "zcp-builder", "prover", "spend-finalizer", "tx-extractor"] }
+# Core PCZT library (official zcash librustzcash with append_transparent_signature support)
+pczt = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = [
+    "transparent",
+    "orchard",
+    "signer",
+    "io-finalizer",
+    "zcp-builder",
+    "prover",
+    "spend-finalizer",
+    "tx-extractor",
+] }
 
-# Transaction building - REQUIRED for core functionality
-zcash_primitives = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }       # Transaction builder
-zcash_address = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }          # Address parsing
-zcash_protocol = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }         # Value types, consensus
-zcash_transparent = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }      # Transparent addresses
-zcash_encoding = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }  # CompactSize encoding
-rand_core = "0.6"                                                                # RNG for builder
-orchard = "0.11"                                                                 # Orchard address handling (patched below)
-subtle = "2.5"                                                                   # Constant-time Option type
-secp256k1 = "0.29"                                                               # ECDSA for transparent addresses
+# Zcash protocol libraries
+zcash_primitives = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }
+zcash_address = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }
+zcash_protocol = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }
+zcash_transparent = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs", features = ["transparent-inputs"] }
+zcash_encoding = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }
 
-# FFI and error handling
+# Cryptography
+orchard = "0.11"
+secp256k1 = "0.29"
+rand_core = "0.6"
+subtle = "2.5"
+
+# FFI
 libc = "0.2"
+
+# Error handling
 thiserror = "1.0"
 
 # Serialization
@@ -31,13 +47,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
-# Testing utilities
 hex = "0.4"
-sha2 = "0.10"           # For generating test data
-
-# Additional test-only dependencies
-zcash_proofs = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }  # For proof tests
-zip321 = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }         # ZIP321 parsing tests
+sha2 = "0.10"
+zcash_proofs = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }
+zip321 = { git = "https://github.com/zcash/librustzcash.git", branch = "pczt-append-transparent-sigs" }
 
 [build-dependencies]
 cbindgen = "0.26"
@@ -51,9 +64,7 @@ sapling = { package = "sapling-crypto", git = "https://github.com/zcash/sapling-
 
 [features]
 default = []
-# Mock expensive cryptographic operations for faster testing
 mock-crypto = []
-# Enable test utilities
 test-utils = []
 
 [profile.release]
@@ -62,4 +73,4 @@ codegen-units = 1
 opt-level = 3
 
 [profile.test]
-opt-level = 1           # Faster test compilation
+opt-level = 1

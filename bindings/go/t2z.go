@@ -21,6 +21,7 @@ package t2z
 // #cgo linux,amd64 LDFLAGS: ${SRCDIR}/lib/linux-x64/libt2z.a -ldl -lm -lpthread
 // #cgo linux,arm64 LDFLAGS: ${SRCDIR}/lib/linux-arm64/libt2z.a -ldl -lm -lpthread
 // #cgo windows,amd64 LDFLAGS: ${SRCDIR}/lib/windows-x64/t2z.lib
+// #cgo windows,arm64 LDFLAGS: ${SRCDIR}/lib/windows-arm64/t2z.lib
 // #include <stdlib.h>
 // #include "t2z.h"
 import "C"

@@ -50,6 +50,20 @@ node scripts/test-all.js --bindings-only
 node scripts/clean.js
 ```
 
+### Full Integration Test (Docker)
+
+Run all tests in an isolated Linux environment:
+
+```bash
+cd infra/linux-build
+docker-compose up --build
+```
+
+This builds a fresh Ubuntu 22.04 container with all dependencies (Node.js, Rust, Go, Java), then:
+1. Cleans all build artifacts
+2. Builds the Rust library from source
+3. Runs all tests: Rust (46), Go (14), TypeScript (17), Kotlin (19), Java (17)
+
 ### What `build-dev.js` Does
 
 1. Builds the Rust library in release mode
@@ -162,21 +176,19 @@ A GitHub Actions workflow is provided in `.github/workflows/release.yml` for aut
 │                                                             │
 │  3. Publish packages                                        │
 │     ├── npm         → @gstohl/t2z                           │
-│     ├── Maven       → com.gstohl:t2z-kotlin                 │
-│     ├── Maven       → com.gstohl:t2z-java                   │
 │     └── Go repo     → github.com/gstohl/t2z-go              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+Java/Kotlin users can use [JitPack](https://jitpack.io) to install directly from GitHub.
+
 ### Prerequisites
 
-1. **Create language-specific repos** (for Go modules):
-   - `gstohl/t2z-go`
+1. **Create Go repo**: `gstohl/t2z-go` (empty, will be auto-populated)
 
-2. **Configure secrets**:
+2. **Configure secrets** (Settings → Secrets → Actions):
    - `NPM_TOKEN` - npm publish token
-   - `OSSRH_USERNAME` / `OSSRH_PASSWORD` - Maven Central credentials
-   - `MULTI_REPO_TOKEN` - GitHub PAT with repo scope (for Go repo push)
+   - `MULTI_REPO_TOKEN` - GitHub PAT with `repo` scope (for Go repo push)
 
 3. **Enable the workflow**: Edit `.github/workflows/release.yml` and change the trigger from `workflow_dispatch` to:
    ```yaml

@@ -1,19 +1,14 @@
-# t2z TypeScript Bindings
+# @gstohl/t2z
 
-TypeScript/Node.js bindings using [koffi](https://koffi.dev/) FFI to wrap the Rust core library.
+TypeScript/Node.js bindings for t2z - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT ([ZIP 374](https://zips.z.cash/zip-0374)).
 
 ## Installation
 
 ```bash
-# Build Rust library first
-cd ../../core/rust && cargo build --release
-
-# Install and build TypeScript
-cd ../../bindings/typescript
-npm install
-npm run build
-npm test
+npm install @gstohl/t2z
 ```
+
+Native libraries are bundled for: macOS (arm64/x64), Linux (x64/arm64), Windows (x64).
 
 ## Usage
 
@@ -26,7 +21,7 @@ import {
   appendSignature,
   finalizeAndExtract,
   signMessage,
-} from 't2z';
+} from '@gstohl/t2z';
 
 // 1. Create payment request
 const request = new TransactionRequest([{
@@ -58,7 +53,7 @@ const txBytes = finalizeAndExtract(signed);
 
 ## API
 
-See [root README](../README.md) for full API documentation.
+See the [main repo](https://github.com/gstohl/t2z) for full documentation.
 
 | Function | Description |
 |----------|-------------|

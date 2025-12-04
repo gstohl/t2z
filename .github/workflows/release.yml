@@ -67,6 +67,11 @@ jobs:
             artifact: t2z-windows-x64.dll
             lib_name: t2z.dll
 
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact: t2z-windows-arm64.dll
+            lib_name: t2z.dll
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -146,19 +151,23 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Copy libraries to binding
+      - name: Copy libraries and LICENSE to binding
         run: |
           mkdir -p bindings/typescript/lib/darwin-arm64
           mkdir -p bindings/typescript/lib/darwin-x64
           mkdir -p bindings/typescript/lib/linux-x64
           mkdir -p bindings/typescript/lib/linux-arm64
           mkdir -p bindings/typescript/lib/windows-x64
+          mkdir -p bindings/typescript/lib/windows-arm64
 
           cp artifacts/libt2z-darwin-arm64.dylib bindings/typescript/lib/darwin-arm64/libt2z.dylib
           cp artifacts/libt2z-darwin-x64.dylib bindings/typescript/lib/darwin-x64/libt2z.dylib
           cp artifacts/libt2z-linux-x64.so bindings/typescript/lib/linux-x64/libt2z.so
           cp artifacts/libt2z-linux-arm64.so bindings/typescript/lib/linux-arm64/libt2z.so
           cp artifacts/t2z-windows-x64.dll bindings/typescript/lib/windows-x64/t2z.dll
+          cp artifacts/t2z-windows-arm64.dll bindings/typescript/lib/windows-arm64/t2z.dll
+
+          cp LICENSE bindings/typescript/LICENSE
 
       - name: Install dependencies
         working-directory: bindings/typescript
@@ -213,6 +222,7 @@ jobs:
           mkdir -p t2z-go/lib/linux-x64
           mkdir -p t2z-go/lib/linux-arm64
           mkdir -p t2z-go/lib/windows-x64
+          mkdir -p t2z-go/lib/windows-arm64
 
           # Copy libraries
           cp artifacts/libt2z-darwin-arm64.dylib t2z-go/lib/darwin-arm64/libt2z.dylib
@@ -220,6 +230,7 @@ jobs:
           cp artifacts/libt2z-linux-x64.so t2z-go/lib/linux-x64/libt2z.so
           cp artifacts/libt2z-linux-arm64.so t2z-go/lib/linux-arm64/libt2z.so
           cp artifacts/t2z-windows-x64.dll t2z-go/lib/windows-x64/t2z.dll
+          cp artifacts/t2z-windows-arm64.dll t2z-go/lib/windows-arm64/t2z.dll
 
       - name: Push to Go repo
         if: ${{ github.event.inputs.dry_run != 'true' }}
@@ -232,70 +243,3 @@ jobs:
           git tag ${{ github.ref_name }}
           git push origin main --tags
 
-  # ===========================================================================
-  # Publish Java/Kotlin to Maven Central
-  # ===========================================================================
-  publish-maven:
-    name: Publish Maven Central
-    needs: build-native
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Copy libraries to Kotlin binding
-        run: |
-          mkdir -p bindings/kotlin/src/main/resources/darwin-aarch64
-          mkdir -p bindings/kotlin/src/main/resources/darwin-x86-64
-          mkdir -p bindings/kotlin/src/main/resources/linux-x86-64
-          mkdir -p bindings/kotlin/src/main/resources/linux-aarch64
-          mkdir -p bindings/kotlin/src/main/resources/win32-x86-64
-
-          cp artifacts/libt2z-darwin-arm64.dylib bindings/kotlin/src/main/resources/darwin-aarch64/libt2z.dylib
-          cp artifacts/libt2z-darwin-x64.dylib bindings/kotlin/src/main/resources/darwin-x86-64/libt2z.dylib
-          cp artifacts/libt2z-linux-x64.so bindings/kotlin/src/main/resources/linux-x86-64/libt2z.so
-          cp artifacts/libt2z-linux-arm64.so bindings/kotlin/src/main/resources/linux-aarch64/libt2z.so
-          cp artifacts/t2z-windows-x64.dll bindings/kotlin/src/main/resources/win32-x86-64/t2z.dll
-
-      - name: Copy libraries to Java binding
-        run: |
-          mkdir -p bindings/java/src/main/resources/darwin-aarch64
-          mkdir -p bindings/java/src/main/resources/darwin-x86-64
-          mkdir -p bindings/java/src/main/resources/linux-x86-64
-          mkdir -p bindings/java/src/main/resources/linux-aarch64
-          mkdir -p bindings/java/src/main/resources/win32-x86-64
-
-          cp artifacts/libt2z-darwin-arm64.dylib bindings/java/src/main/resources/darwin-aarch64/libt2z.dylib
-          cp artifacts/libt2z-darwin-x64.dylib bindings/java/src/main/resources/darwin-x86-64/libt2z.dylib
-          cp artifacts/libt2z-linux-x64.so bindings/java/src/main/resources/linux-x86-64/libt2z.so
-          cp artifacts/libt2z-linux-arm64.so bindings/java/src/main/resources/linux-aarch64/libt2z.so
-          cp artifacts/t2z-windows-x64.dll bindings/java/src/main/resources/win32-x86-64/t2z.dll
-
-      - name: Build and Publish Kotlin
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        working-directory: bindings/kotlin
-        run: ./gradlew publish
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-
-      - name: Build and Publish Java
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        working-directory: bindings/java
-        run: ./gradlew publish
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
