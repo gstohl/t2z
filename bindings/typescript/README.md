@@ -92,7 +92,7 @@ interface TransparentInput {
 
 ## Examples
 
-See [examples/](examples/) for complete working examples:
+See [examples/](https://github.com/gstohl/t2z/tree/main/bindings/typescript/examples) for complete working examples:
 
 - **zebrad-regtest/** - Local regtest network examples (1-9)
 - **zebrad-mainnet/** - Mainnet examples with hardware wallet flow
