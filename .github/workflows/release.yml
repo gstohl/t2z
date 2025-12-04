@@ -42,33 +42,45 @@ jobs:
         include:
           - os: macos-14
             target: aarch64-apple-darwin
-            artifact: libt2z-darwin-arm64.dylib
-            lib_name: libt2z.dylib
+            artifact_dyn: libt2z-darwin-arm64.dylib
+            artifact_static: libt2z-darwin-arm64.a
+            lib_dyn: libt2z.dylib
+            lib_static: libt2z.a
 
           - os: macos-13
             target: x86_64-apple-darwin
-            artifact: libt2z-darwin-x64.dylib
-            lib_name: libt2z.dylib
+            artifact_dyn: libt2z-darwin-x64.dylib
+            artifact_static: libt2z-darwin-x64.a
+            lib_dyn: libt2z.dylib
+            lib_static: libt2z.a
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: libt2z-linux-x64.so
-            lib_name: libt2z.so
+            artifact_dyn: libt2z-linux-x64.so
+            artifact_static: libt2z-linux-x64.a
+            lib_dyn: libt2z.so
+            lib_static: libt2z.a
 
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            artifact: libt2z-linux-arm64.so
-            lib_name: libt2z.so
+            artifact_dyn: libt2z-linux-arm64.so
+            artifact_static: libt2z-linux-arm64.a
+            lib_dyn: libt2z.so
+            lib_static: libt2z.a
 
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: t2z-windows-x64.dll
-            lib_name: t2z.dll
+            artifact_dyn: t2z-windows-x64.dll
+            artifact_static: t2z-windows-x64.lib
+            lib_dyn: t2z.dll
+            lib_static: t2z.lib
 
           - os: windows-latest
             target: aarch64-pc-windows-msvc
-            artifact: t2z-windows-arm64.dll
-            lib_name: t2z.dll
+            artifact_dyn: t2z-windows-arm64.dll
+            artifact_static: t2z-windows-arm64.lib
+            lib_dyn: t2z.dll
+            lib_static: t2z.lib
 
     runs-on: ${{ matrix.os }}
 
@@ -84,16 +96,24 @@ jobs:
       - name: Build
         run: cargo build --release --manifest-path core/rust/Cargo.toml
 
-      - name: Rename artifact
+      - name: Rename artifacts
         shell: bash
         run: |
-          cp core/rust/target/release/${{ matrix.lib_name }} ${{ matrix.artifact }}
+          cp core/rust/target/release/${{ matrix.lib_dyn }} ${{ matrix.artifact_dyn }}
+          cp core/rust/target/release/${{ matrix.lib_static }} ${{ matrix.artifact_static }}
 
-      - name: Upload artifact
+      - name: Upload dynamic library
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          name: ${{ matrix.artifact_dyn }}
+          path: ${{ matrix.artifact_dyn }}
+          retention-days: 1
+
+      - name: Upload static library
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_static }}
+          path: ${{ matrix.artifact_static }}
           retention-days: 1
 
   # ===========================================================================
@@ -169,7 +189,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: bindings/typescript
-        run: npm ci
+        run: npm install
 
       - name: Build
         working-directory: bindings/typescript
@@ -222,13 +242,13 @@ jobs:
           mkdir -p t2z-go/lib/windows-x64
           mkdir -p t2z-go/lib/windows-arm64
 
-          # Copy libraries
-          cp artifacts/libt2z-darwin-arm64.dylib t2z-go/lib/darwin-arm64/libt2z.dylib
-          cp artifacts/libt2z-darwin-x64.dylib t2z-go/lib/darwin-x64/libt2z.dylib
-          cp artifacts/libt2z-linux-x64.so t2z-go/lib/linux-x64/libt2z.so
-          cp artifacts/libt2z-linux-arm64.so t2z-go/lib/linux-arm64/libt2z.so
-          cp artifacts/t2z-windows-x64.dll t2z-go/lib/windows-x64/t2z.dll
-          cp artifacts/t2z-windows-arm64.dll t2z-go/lib/windows-arm64/t2z.dll
+          # Copy static libraries for Go
+          cp artifacts/libt2z-darwin-arm64.a t2z-go/lib/darwin-arm64/libt2z.a
+          cp artifacts/libt2z-darwin-x64.a t2z-go/lib/darwin-x64/libt2z.a
+          cp artifacts/libt2z-linux-x64.a t2z-go/lib/linux-x64/libt2z.a
+          cp artifacts/libt2z-linux-arm64.a t2z-go/lib/linux-arm64/libt2z.a
+          cp artifacts/t2z-windows-x64.lib t2z-go/lib/windows-x64/t2z.lib
+          cp artifacts/t2z-windows-arm64.lib t2z-go/lib/windows-arm64/t2z.lib
 
       - name: Push to Go repo
         if: ${{ github.event.inputs.dry_run != 'true' }}
