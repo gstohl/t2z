@@ -1,8 +1,7 @@
 plugins {
     kotlin("jvm") version "1.9.22"
     `java-library`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish") version "0.30.0"
 }
 
 group = "io.github.gstohl"
@@ -33,62 +32,36 @@ kotlin {
     jvmToolchain(17)
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            artifactId = "t2z-kotlin"
-            from(components["java"])
+    coordinates("io.github.gstohl", "t2z-kotlin", version.toString())
 
-            pom {
-                name.set("t2z-kotlin")
-                description.set("Kotlin/JVM bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT")
-                url.set("https://github.com/gstohl/t2z")
+    pom {
+        name.set("t2z-kotlin")
+        description.set("Kotlin/JVM bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT")
+        url.set("https://github.com/gstohl/t2z")
+        inceptionYear.set("2024")
 
-                licenses {
-                    license {
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
-
-                developers {
-                    developer {
-                        id.set("gstohl")
-                        name.set("Dominik Gstöhl")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:git://github.com/gstohl/t2z.git")
-                    developerConnection.set("scm:git:ssh://github.com/gstohl/t2z.git")
-                    url.set("https://github.com/gstohl/t2z")
-                }
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
             }
         }
-    }
 
-    repositories {
-        maven {
-            name = "OSSRH"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = System.getenv("OSSRH_USERNAME")
-                password = System.getenv("OSSRH_PASSWORD")
+        developers {
+            developer {
+                id.set("gstohl")
+                name.set("Dominik Gstöhl")
             }
         }
-    }
-}
 
-signing {
-    val signingKey = System.getenv("GPG_PRIVATE_KEY")
-    val signingPassword = System.getenv("GPG_PASSPHRASE")
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["maven"])
+        scm {
+            connection.set("scm:git:git://github.com/gstohl/t2z.git")
+            developerConnection.set("scm:git:ssh://github.com/gstohl/t2z.git")
+            url.set("https://github.com/gstohl/t2z")
+        }
     }
 }

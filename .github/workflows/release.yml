@@ -305,13 +305,13 @@ jobs:
       - name: Publish to Maven Central
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: bindings/kotlin
-        run: ./gradlew publishMavenPublicationToOSSRHRepository
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:
           VERSION: ${{ github.ref_name }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
 
   # ===========================================================================
   # Publish Java to Maven Central
@@ -356,11 +356,11 @@ jobs:
       - name: Publish to Maven Central
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: bindings/java
-        run: ./gradlew publishMavenPublicationToOSSRHRepository
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:
           VERSION: ${{ github.ref_name }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
 
