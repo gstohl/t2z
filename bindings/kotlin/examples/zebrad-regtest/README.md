@@ -32,7 +32,7 @@ cargo build --release
 ### 4. Build Examples
 
 ```bash
-cd bindings/kotlin/examples/zebrad-t2z
+cd bindings/kotlin/examples/zebrad-regtest
 ./gradlew build
 ```
 

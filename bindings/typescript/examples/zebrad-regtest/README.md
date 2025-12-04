@@ -25,7 +25,7 @@ The internal miner auto-mines blocks every ~30 seconds. You need **101 blocks** 
 ### 3. Install Dependencies
 
 ```bash
-cd bindings/typescript/examples/zebrad-t2z
+cd bindings/typescript/examples/zebrad-regtest
 npm install
 ```
 

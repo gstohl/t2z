@@ -21,7 +21,7 @@ go get github.com/gstohl/t2z-go
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.gstohl:t2z-kotlin:0.1.6")
+    implementation("io.github.gstohl:t2z-kotlin:0.2.0")
 }
 ```
 
@@ -30,7 +30,7 @@ dependencies {
 ```groovy
 // build.gradle
 dependencies {
-    implementation 'io.github.gstohl:t2z-java:0.1.6'
+    implementation 'io.github.gstohl:t2z-java:0.2.0'
 }
 ```
 
@@ -119,13 +119,17 @@ Use `calculate_fee(numInputs, numOutputs)` to get the exact fee before building 
 ```
 t2z/
 ├── core/
-│   └── rust/        # Core library with C FFI
+│   └── rust/           # Core library with C FFI
 ├── bindings/
-│   ├── go/          # Go bindings (CGO)
-│   ├── typescript/  # TypeScript bindings (koffi)
-│   ├── java/        # Java bindings (JNA)
-│   └── kotlin/      # Kotlin bindings (JNA)
-└── infra/           # Docker infrastructure for testing
+│   ├── go/             # Go bindings (CGO)
+│   ├── typescript/     # TypeScript bindings (koffi)
+│   ├── java/           # Java bindings (JNA)
+│   └── kotlin/         # Kotlin bindings (JNA)
+└── infra/
+    ├── zebrad-regtest/ # Local regtest node (auto-mining)
+    ├── zebrad-testnet/ # Testnet node
+    ├── zebrad-mainnet/ # Mainnet node
+    └── linux-build/    # Cross-compilation for Linux
 ```
 
 ### Scripts
@@ -171,6 +175,28 @@ cd core/rust && cargo build --release
 
 Outputs in `core/rust/target/release/`:
 - `libt2z.dylib` (macOS) / `libt2z.so` (Linux) / `t2z.dll` (Windows)
+
+### Releasing
+
+Releases are automated via GitHub Actions. To create a new release:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The release workflow will:
+1. Build native libraries for all 6 platforms (macOS/Linux/Windows × x64/arm64)
+2. Create a GitHub Release with all binaries attached
+3. Publish TypeScript package to npm
+4. Publish Java and Kotlin packages to Maven Central
+5. Push Go bindings to the [t2z-go](https://github.com/gstohl/t2z-go) repository with matching tag
+
+Required repository secrets:
+- `NPM_TOKEN` - npm access token for `@gstohl/t2z`
+- `OSSRH_USERNAME`, `OSSRH_PASSWORD` - Maven Central credentials
+- `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE` - GPG signing for Maven
+- `MULTI_REPO_TOKEN` - GitHub PAT for pushing to t2z-go repo
 
 ## License
 

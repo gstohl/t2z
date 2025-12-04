@@ -16,15 +16,11 @@ Java examples demonstrating t2z library usage with Zebra regtest.
 cd infra/zebrad-regtest
 docker-compose down -v && docker-compose up -d
 
-# Run setup from typescript examples (waits for block 101)
-cd ../../bindings/typescript/examples/zebrad-t2z
-npm install && npm run setup
-
-# Copy test data to Java examples
-cp data/test-addresses.json ../../bindings/java/examples/zebrad-t2z/data/
+# Run setup (waits for block 101)
+cd ../../bindings/java/examples/zebrad-regtest
+./gradlew setup
 
 # Run Java examples
-cd ../../bindings/java/examples/zebrad-t2z
 ./gradlew example1
 ```
 
@@ -37,7 +33,7 @@ cd ../../bindings/java/examples/zebrad-t2z
 ## Running Examples
 
 ```bash
-cd bindings/java/examples/zebrad-t2z
+cd bindings/java/examples/zebrad-regtest
 
 # Build
 ./gradlew build
@@ -68,7 +64,7 @@ cd bindings/java/examples/zebrad-t2z
 ## Project Structure
 
 ```
-java/examples/zebrad-t2z/
+java/examples/zebrad-regtest/
 ├── src/main/java/com/zcash/t2z/examples/
 │   ├── Keys.java              # Key management utilities
 │   ├── ZebraClient.java       # Zebra RPC client

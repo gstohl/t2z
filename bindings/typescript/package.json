@@ -1,7 +1,7 @@
 {
   "name": "@gstohl/t2z",
-  "version": "0.1.6",
-  "description": "TypeScript/Node.js bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT",
+  "version": "0.2.0",
+  "description": "TypeScript/Node.js bindings for t2z (Transparent to Shielded) - send transparent Zcash to shielded Orchard outputs via PCZT",
   "homepage": "https://gstohl.com",
   "publishConfig": {
     "access": "public"

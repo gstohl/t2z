@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.github.gstohl:t2z-java:0.1.6'
+    implementation 'io.github.gstohl:t2z-java:0.2.0'
 }
 ```
 
