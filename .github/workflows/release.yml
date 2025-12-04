@@ -1,18 +1,19 @@
 # =============================================================================
-# PROPOSAL: Release Workflow for t2z
+# Release Workflow for t2z
 # =============================================================================
-# This workflow is a PROPOSAL and is DISABLED by default.
-# To enable, change the 'on' trigger from 'workflow_dispatch' to 'push: tags'
+# Triggered by pushing tags matching 'v*' (e.g., v0.1.0)
 #
 # What it does:
 # 1. Builds native Rust library for all platforms (macOS, Linux, Windows)
 # 2. Creates a GitHub Release with all binaries attached
-# 3. Publishes to language-specific package registries (npm, Maven Central)
+# 3. Publishes to npm (TypeScript), Maven Central (Java/Kotlin)
 # 4. Pushes code to language-specific repos for Go modules
 #
-# Prerequisites:
-# - Secrets: NPM_TOKEN, OSSRH_USERNAME, OSSRH_PASSWORD, MULTI_REPO_TOKEN
-# - Create language repos: github.com/gstohl/t2z-go
+# Required secrets:
+# - NPM_TOKEN: npm access token for @gstohl/t2z
+# - OSSRH_USERNAME, OSSRH_PASSWORD: Maven Central credentials
+# - GPG_PRIVATE_KEY, GPG_PASSPHRASE: GPG signing for Maven
+# - MULTI_REPO_TOKEN: GitHub PAT for pushing to t2z-go repo
 # =============================================================================
 
 name: Release
@@ -47,7 +48,7 @@ jobs:
             lib_dyn: libt2z.dylib
             lib_static: libt2z.a
 
-          - os: macos-13
+          - os: macos-15
             target: x86_64-apple-darwin
             artifact_dyn: libt2z-darwin-x64.dylib
             artifact_static: libt2z-darwin-x64.a
@@ -260,4 +261,106 @@ jobs:
           git commit -m "Release ${{ github.ref_name }}" || exit 0
           git tag ${{ github.ref_name }}
           git push origin main --tags
+
+  # ===========================================================================
+  # Publish Kotlin to Maven Central
+  # ===========================================================================
+  publish-maven-kotlin:
+    name: Publish Kotlin to Maven
+    needs: build-native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy native libraries to resources
+        run: |
+          mkdir -p bindings/kotlin/src/main/resources/darwin-aarch64
+          mkdir -p bindings/kotlin/src/main/resources/darwin-x86-64
+          mkdir -p bindings/kotlin/src/main/resources/linux-x86-64
+          mkdir -p bindings/kotlin/src/main/resources/linux-aarch64
+          mkdir -p bindings/kotlin/src/main/resources/win32-x86-64
+          mkdir -p bindings/kotlin/src/main/resources/win32-aarch64
+
+          cp artifacts/libt2z-darwin-arm64.dylib bindings/kotlin/src/main/resources/darwin-aarch64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib bindings/kotlin/src/main/resources/darwin-x86-64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so bindings/kotlin/src/main/resources/linux-x86-64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so bindings/kotlin/src/main/resources/linux-aarch64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll bindings/kotlin/src/main/resources/win32-x86-64/t2z.dll
+          cp artifacts/t2z-windows-arm64.dll bindings/kotlin/src/main/resources/win32-aarch64/t2z.dll
+
+      - name: Publish to Maven Central
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: bindings/kotlin
+        run: ./gradlew publishMavenPublicationToOSSRHRepository
+        env:
+          VERSION: ${{ github.ref_name }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+  # ===========================================================================
+  # Publish Java to Maven Central
+  # ===========================================================================
+  publish-maven-java:
+    name: Publish Java to Maven
+    needs: build-native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy native libraries to resources
+        run: |
+          mkdir -p bindings/java/src/main/resources/darwin-aarch64
+          mkdir -p bindings/java/src/main/resources/darwin-x86-64
+          mkdir -p bindings/java/src/main/resources/linux-x86-64
+          mkdir -p bindings/java/src/main/resources/linux-aarch64
+          mkdir -p bindings/java/src/main/resources/win32-x86-64
+          mkdir -p bindings/java/src/main/resources/win32-aarch64
+
+          cp artifacts/libt2z-darwin-arm64.dylib bindings/java/src/main/resources/darwin-aarch64/libt2z.dylib
+          cp artifacts/libt2z-darwin-x64.dylib bindings/java/src/main/resources/darwin-x86-64/libt2z.dylib
+          cp artifacts/libt2z-linux-x64.so bindings/java/src/main/resources/linux-x86-64/libt2z.so
+          cp artifacts/libt2z-linux-arm64.so bindings/java/src/main/resources/linux-aarch64/libt2z.so
+          cp artifacts/t2z-windows-x64.dll bindings/java/src/main/resources/win32-x86-64/t2z.dll
+          cp artifacts/t2z-windows-arm64.dll bindings/java/src/main/resources/win32-aarch64/t2z.dll
+
+      - name: Publish to Maven Central
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: bindings/java
+        run: ./gradlew publishMavenPublicationToOSSRHRepository
+        env:
+          VERSION: ${{ github.ref_name }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 

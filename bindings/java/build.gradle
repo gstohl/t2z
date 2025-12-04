@@ -1,10 +1,11 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
-group = 'com.zcash'
-version = '0.1.0'
+group = 'io.github.gstohl'
+version = System.getenv('VERSION')?.replaceFirst('^v', '') ?: '0.1.0'
 
 java {
     toolchain {
@@ -32,18 +33,16 @@ dependencies {
 
 test {
     useJUnitPlatform()
-
-    // JNA automatically loads from src/main/resources/<platform>/
-    // No need to set jna.library.path when library is in resources
 }
 
 publishing {
     publications {
         maven(MavenPublication) {
+            artifactId = 't2z-java'
             from components.java
 
             pom {
-                name = 't2z'
+                name = 't2z-java'
                 description = 'Java bindings for t2z (Transparent to Zcash) library - enabling transparent Zcash wallets to send shielded Orchard outputs via PCZT'
                 url = 'https://github.com/gstohl/t2z'
 
@@ -56,10 +55,37 @@ publishing {
 
                 developers {
                     developer {
+                        id = 'gstohl'
                         name = 'Dominik Gstöhl'
                     }
                 }
+
+                scm {
+                    connection = 'scm:git:git://github.com/gstohl/t2z.git'
+                    developerConnection = 'scm:git:ssh://github.com/gstohl/t2z.git'
+                    url = 'https://github.com/gstohl/t2z'
+                }
             }
         }
+    }
+
+    repositories {
+        maven {
+            name = 'OSSRH'
+            url = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            credentials {
+                username = System.getenv('OSSRH_USERNAME')
+                password = System.getenv('OSSRH_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    def signingKey = System.getenv('GPG_PRIVATE_KEY')
+    def signingPassword = System.getenv('GPG_PASSPHRASE')
+    if (signingKey != null && signingPassword != null) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.maven
     }
 }
